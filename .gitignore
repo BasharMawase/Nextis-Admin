@@ -1,0 +1,11 @@
+__pycache__/
+*.pyc
+.DS_Store
+.env
+nexsis.db
+uploads/
+.gemini/
+.vscode/
+data/
+*.csv
+*.xlsx

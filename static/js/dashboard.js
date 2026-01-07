@@ -1,0 +1,463 @@
+// File upload handling
+const fileInput = document.getElementById('fileInput');
+const uploadBox = document.getElementById('uploadBox');
+const searchInput = document.getElementById('searchInput');
+const searchResults = document.getElementById('searchResults');
+
+// City Search Logic
+let currentCityClients = [];
+const citySearchInput = document.getElementById('citySearchInput');
+
+if (citySearchInput) {
+    citySearchInput.addEventListener('input', (e) => {
+        const query = e.target.value.toLowerCase().trim();
+        if (!currentCityClients) return;
+
+        const filtered = currentCityClients.filter(c => {
+            const name = (c.business_name || c['Business Name'] || '').toLowerCase();
+            const phone = (c.phone || c.Phone || '').toLowerCase();
+            return name.includes(query) || phone.includes(query);
+        });
+
+        const listContainer = document.getElementById('locationClientsList');
+        displaySearchResults(filtered, listContainer);
+    });
+}
+
+// Check if data already exists on load
+document.addEventListener('DOMContentLoaded', () => {
+    loadAnalytics();
+    loadMatrix();
+});
+
+// Drag and drop
+uploadBox.addEventListener('dragover', (e) => {
+    e.preventDefault();
+    uploadBox.style.borderColor = '#e63946';
+});
+
+uploadBox.addEventListener('dragleave', () => {
+    uploadBox.style.borderColor = '#2d3748';
+});
+
+uploadBox.addEventListener('drop', (e) => {
+    e.preventDefault();
+    uploadBox.style.borderColor = '#2d3748';
+
+    const files = e.dataTransfer.files;
+    if (files.length > 0) {
+        uploadFiles(files);
+    }
+});
+
+fileInput.addEventListener('change', (e) => {
+    if (e.target.files.length > 0) {
+        uploadFiles(e.target.files);
+    }
+});
+
+async function uploadFiles(files) {
+    console.log('Starting upload of', files.length, 'files');
+    const formData = new FormData();
+    for (let i = 0; i < files.length; i++) {
+        formData.append('files', files[i]);
+    }
+
+    try {
+        uploadBox.innerHTML = '<p>מעלה ומעבד...</p>';
+
+        const response = await fetch('/api/upload', {
+            method: 'POST',
+            body: formData
+        });
+
+        const data = await response.json();
+
+        if (data.success) {
+            loadAnalytics();
+            resetUploadBox();
+        } else {
+            alert('שגיאה בהעלאת קובץ: ' + data.error);
+            resetUploadBox();
+        }
+    } catch (error) {
+        console.error('Upload error:', error);
+        alert('שגיאה בהעלאת קובץ');
+        resetUploadBox();
+    }
+}
+
+function resetUploadBox() {
+    uploadBox.innerHTML = `
+        <p>גרור ושחרר קבצים כאן</p>
+        <p class="file-limit">עד 200MB לקובץ • XLSX, XLS, CSV</p>
+        <button class="btn-upload" onclick="document.getElementById('fileInput').click()">בחר קבצים</button>
+    `;
+}
+
+// Search functionality
+let searchTimeout;
+searchInput.addEventListener('input', (e) => {
+    clearTimeout(searchTimeout);
+    const query = e.target.value.trim();
+
+    if (query.length < 2) {
+        searchResults.innerHTML = '';
+        return;
+    }
+
+    searchTimeout = setTimeout(() => search(query), 300);
+});
+
+async function search(query) {
+    try {
+        const response = await fetch(`/api/search?q=${encodeURIComponent(query)}`);
+        const results = await response.json();
+
+        displaySearchResults(results, searchResults);
+    } catch (error) {
+        console.error('Search error:', error);
+    }
+}
+
+function displaySearchResults(results, container) {
+    container.innerHTML = '';
+
+    if (!results || results.length === 0) {
+        container.innerHTML = '<p style="color: #a0aec0;">לא נמצאו תוצאות.</p>';
+        return;
+    }
+
+    if (container === searchResults) {
+        container.innerHTML = `<p style="color: #48bb78; margin-bottom: 16px;">נמצאו ${results.length} תוצאות</p>`;
+    } else {
+        container.innerHTML = `<p style="color: #48bb78; margin-bottom: 16px;">מציג ${results.length} לקוחות</p>`;
+    }
+
+    results.forEach(business => {
+        const card = document.createElement('div');
+        card.className = 'business-card';
+        // Handle both key formats (DB vs old DF) just in case, but prioritize DB keys
+        const name = business.business_name || business['Business Name'] || 'לא ידוע';
+        const location = business.location || business.Location || 'לא ידוע';
+        const phone = business.phone || business.Phone || 'אין';
+        const anydesk = business.anydesk || business.AnyDesk || 'אין';
+
+        card.onclick = () => openClientDetails(business); // Click to open details
+        card.innerHTML = `
+            <div class="card-title">${name}</div>
+            <div class="card-detail">📍 <strong>עיר:</strong> ${location}</div>
+            <div class="card-detail" style="color: #2a9d8f; font-weight: 600;">
+                📞 <strong>טלפון:</strong> ${phone}
+            </div>
+            <span class="anydesk-badge">💻 AnyDesk: ${anydesk}</span>
+        `;
+        container.appendChild(card);
+    });
+}
+
+const clientDetailsModal = document.getElementById('clientDetailsModal');
+
+function openClientDetails(client) {
+    const name = client.business_name || client['Business Name'] || 'לא ידוע';
+    document.getElementById('detailBusinessName').textContent = name;
+
+    const container = document.getElementById('dynamicDetails');
+    container.innerHTML = '';
+
+    let extraData = {};
+    let hasExtra = false;
+
+    try {
+        if (client.extra_data) {
+            extraData = JSON.parse(client.extra_data);
+            hasExtra = true;
+        }
+    } catch (e) {
+        console.error('Error parsing extra_data:', e);
+    }
+
+    // Fallback for legacy records or empty extra_data
+    if (!hasExtra || Object.keys(extraData).length === 0) {
+        extraData = {
+            '📍 מיקום': client.location || client.Location || 'לא ידוע',
+            '📞 טלפון': client.phone || client.Phone || 'אין',
+            '💻 AnyDesk': client.anydesk || client.AnyDesk || 'אין'
+        };
+    }
+
+    // Create grid items
+    Object.entries(extraData).forEach(([key, value]) => {
+        if (key === 'extra_data') return;
+
+        const item = document.createElement('div');
+        item.className = 'detail-item';
+
+        const label = document.createElement('span');
+        label.className = 'detail-label';
+        label.textContent = key; // Column name from Excel
+
+        const text = document.createElement('span');
+        text.className = 'detail-text';
+        text.textContent = value || '-';
+
+        item.appendChild(label);
+        item.appendChild(text);
+        container.appendChild(item);
+    });
+
+    clientDetailsModal.style.display = 'block';
+}
+
+function closeClientDetailsModal() {
+    clientDetailsModal.style.display = 'none';
+}
+
+// Load analytics
+async function loadAnalytics() {
+    try {
+        const response = await fetch('/api/analytics');
+        const data = await response.json();
+
+        if (data && data.total > 0) {
+            // Show content
+            document.getElementById('welcomeMessage').style.display = 'none';
+            document.getElementById('searchSection').style.display = 'block';
+            document.getElementById('analyticsSection').style.display = 'block';
+
+            // Update metrics
+            document.getElementById('totalClients').textContent = data.total;
+            document.getElementById('uniqueLocations').textContent = data.unique_locations;
+            document.getElementById('topLocation').textContent = data.top_location;
+
+            // Display location cards
+            const grid = document.getElementById('locationsGrid');
+            grid.innerHTML = '';
+
+            data.locations.forEach(location => {
+                const card = document.createElement('div');
+                card.className = 'location-card';
+                card.onclick = () => openLocationDetails(location.name);
+                card.innerHTML = `
+                    <div class="location-name">
+                        <span>📍</span>
+                        <span>${location.name}</span>
+                    </div>
+                    <div class="location-stats">
+                        <div class="stat">
+                            <div class="stat-label">לקוחות</div>
+                            <div class="stat-value count">${location.count}</div>
+                        </div>
+                        <div class="stat">
+                            <div class="stat-label">אחוז</div>
+                            <div class="stat-value percentage">${location.percentage}%</div>
+                        </div>
+                    </div>
+                `;
+                grid.appendChild(card);
+            });
+        }
+    } catch (error) {
+        console.error('Analytics error:', error);
+    }
+}
+
+function closeLocationDetails() {
+    document.getElementById('locationDetailsSection').style.display = 'none';
+    document.getElementById('analyticsSection').style.display = 'block';
+    document.getElementById('searchSection').style.display = 'block';
+}
+
+// Add Client Modal Logic
+const modal = document.getElementById("addClientModal");
+
+function openAddClientModal() {
+    modal.style.display = "block";
+    document.getElementById("addName").focus();
+}
+
+function closeAddClientModal() {
+    modal.style.display = "none";
+}
+
+// Close if click outside
+window.onclick = function (event) {
+    if (event.target == modal) {
+        modal.style.display = "none";
+    }
+    if (event.target == clientDetailsModal) {
+        clientDetailsModal.style.display = "none";
+    }
+}
+
+async function submitAddClient(event) {
+    event.preventDefault();
+
+    const clientData = {
+        business_name: document.getElementById("addName").value,
+        location: document.getElementById("addLocation").value,
+        phone: document.getElementById("addPhone").value,
+        anydesk: document.getElementById("addAnyDesk").value
+    };
+
+    // Disable button to prevent double submit
+    const btn = event.target.querySelector('button');
+    const originalText = btn.textContent;
+    btn.textContent = 'שומר...';
+    btn.disabled = true;
+
+    try {
+        const response = await fetch('/api/clients/add', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(clientData)
+        });
+
+        const data = await response.json();
+
+        if (data.success) {
+            // Reset form
+            document.getElementById("addClientForm").reset();
+            closeAddClientModal();
+
+            // Reload data
+            loadAnalytics();
+            alert("הלקוח נוסף בהצלחה!");
+        } else {
+            alert('שגיאה הוספת לקוח: ' + (data.error || 'שגיאה לא ידועה'));
+        }
+    } catch (error) {
+        console.error('Error:', error);
+        alert('שגיאה הוספת לקוח');
+    } finally {
+        btn.textContent = originalText;
+        btn.disabled = false;
+    }
+}
+
+// Location Details Drill-down
+async function openLocationDetails(location) {
+    document.getElementById('analyticsSection').style.display = 'none';
+    document.getElementById('searchSection').style.display = 'none';
+    const detailsSection = document.getElementById('locationDetailsSection');
+    detailsSection.style.display = 'block';
+
+    document.getElementById('locationDetailsTitle').textContent = `לקוחות ב-${location}`;
+    const listContainer = document.getElementById('locationClientsList');
+    listContainer.innerHTML = '<p>טוען...</p>';
+
+    // Reset search
+    if (citySearchInput) citySearchInput.value = '';
+
+    try {
+        const response = await fetch(`/api/clients?location=${encodeURIComponent(location)}`);
+        const clients = await response.json();
+
+        currentCityClients = clients; // Store for filtering
+        displaySearchResults(clients, listContainer);
+
+    } catch (error) {
+        console.error('Error fetching clients:', error);
+        listContainer.innerHTML = '<p style="color:red">שגיאה בטעינת לקוחות.</p>';
+    }
+
+
+}
+
+// Data Matrix Logic
+let currentPage = 1;
+const limit = 50;
+
+async function loadMatrix() {
+    const tableBody = document.getElementById('tableBody');
+    // Using innerHTML with a single row for loading message
+    tableBody.innerHTML = '<tr><td colspan="100%" style="text-align:center; padding: 20px;">טוען נתונים...</td></tr>';
+
+    try {
+        const response = await fetch(`/api/clients/all?page=${currentPage}&limit=${limit}`);
+        const data = await response.json();
+
+        renderMatrix(data.data);
+
+        // Update pagination
+        const totalPages = Math.ceil(data.total / data.per_page) || 1;
+        document.getElementById('pageInfo').textContent = `עמוד ${data.page} מתוך ${totalPages}`;
+        document.getElementById('prevPage').disabled = data.page <= 1;
+        document.getElementById('nextPage').disabled = data.page >= totalPages;
+
+        // Show section if hidden
+        document.getElementById('matrixSection').style.display = 'block';
+    } catch (e) {
+        console.error('Matrix error:', e);
+        tableBody.innerHTML = '<tr><td colspan="100%" style="text-align:center; color: #e63946; padding: 20px;">שגיאה בטעינת נתונים</td></tr>';
+    }
+}
+
+function renderMatrix(rows) {
+    const tableBody = document.getElementById('tableBody');
+    const tableHeader = document.getElementById('tableHeader');
+
+    if (!rows || rows.length === 0) {
+        tableBody.innerHTML = '<tr><td colspan="100%" style="text-align:center; padding: 20px;">אין נתונים להצגה</td></tr>';
+        return;
+    }
+
+    // 1. Collect all columns
+    const allColumns = new Set();
+    const mainCols = ['business_name', 'location', 'phone', 'anydesk', 'source_file'];
+    mainCols.forEach(c => allColumns.add(c));
+
+    rows.forEach(r => Object.keys(r).forEach(k => {
+        if (k !== 'extra_data' && k !== 'id' && k !== 'created_at' && !mainCols.includes(k)) {
+            allColumns.add(k);
+        }
+    }));
+
+    const colArray = Array.from(allColumns);
+    const headerMap = {
+        'business_name': 'שם עסק',
+        'location': 'מיקום',
+        'phone': 'טלפון',
+        'anydesk': 'AnyDesk',
+        'source_file': 'קובץ מקור'
+    };
+
+    // 2. Render Header
+    tableHeader.innerHTML = '';
+    colArray.forEach(col => {
+        const th = document.createElement('th');
+        th.textContent = headerMap[col] || col;
+        tableHeader.appendChild(th);
+    });
+
+    // 3. Render Body
+    tableBody.innerHTML = '';
+    rows.forEach(r => {
+        const tr = document.createElement('tr');
+        tr.onclick = () => openClientDetails(r); // Click to open modal
+
+        colArray.forEach(col => {
+            const td = document.createElement('td');
+            td.textContent = r[col] || '-';
+            tr.appendChild(td);
+        });
+        tableBody.appendChild(tr);
+    });
+}
+
+function changePage(delta) {
+    currentPage += delta;
+    if (currentPage < 1) currentPage = 1;
+    loadMatrix();
+}
+
+
+
+
+
+
+
+
+

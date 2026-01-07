@@ -1,0 +1,158 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Nextis Admin Dashboard</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/dashboard.css') }}">
+</head>
+
+<body>
+    <!-- Sidebar -->
+    <div class="sidebar">
+        <div class="logo">
+            <span class="logo-icon">🛡️</span>
+            <h2>Nextis Admin</h2>
+        </div>
+
+        <div class="upload-section">
+            <h3>פעולות</h3>
+            <button class="btn-primary" style="width: 100%; margin-bottom: 24px;" onclick="openAddClientModal()">+ הוסף
+                לקוח חדש</button>
+
+            <h3>העלאת נתונים</h3>
+            <div class="upload-box" id="uploadBox">
+                <p>גרור ושחרר קבצים כאן</p>
+                <p class="file-limit">עד 200MB לקובץ • XLSX, XLS, CSV</p>
+                <button class="btn-upload" onclick="document.getElementById('fileInput').click()">בחר קבצים</button>
+                <input type="file" id="fileInput" accept=".xlsx,.xls,.csv" multiple style="display: none;">
+            </div>
+        </div>
+
+        <!-- Client Details Modal -->
+        <div id="clientDetailsModal" class="modal" style="display: none;">
+            <div class="modal-content">
+                <span class="close" onclick="closeClientDetailsModal()">&times;</span>
+                <h2 id="detailBusinessName" style="margin-bottom: 20px; color: #e63946;"></h2>
+
+                <div id="dynamicDetails" class="details-grid"></div>
+
+                <button class="btn-primary" onclick="closeClientDetailsModal()" style="margin-top: 16px;">סגור</button>
+            </div>
+        </div>
+
+        <!-- Add Client Modal -->
+        <div id="addClientModal" class="modal" style="display: none;">
+            <div class="modal-content">
+                <span class="close" onclick="closeAddClientModal()">&times;</span>
+                <h2>הוסף לקוח חדש</h2>
+                <form id="addClientForm" onsubmit="submitAddClient(event)">
+                    <div class="form-group">
+                        <label>שם עסק</label>
+                        <input type="text" id="addName" required class="modal-input">
+                    </div>
+                    <div class="form-group">
+                        <label>עיר / מיקום</label>
+                        <input type="text" id="addLocation" required class="modal-input">
+                    </div>
+                    <div class="form-group">
+                        <label>טלפון</label>
+                        <input type="text" id="addPhone" class="modal-input">
+                    </div>
+                    <div class="form-group">
+                        <label>AnyDesk</label>
+                        <input type="text" id="addAnyDesk" class="modal-input">
+                    </div>
+                    <button type="submit" class="btn-primary modal-btn">שמור לקוח</button>
+                </form>
+            </div>
+        </div>
+
+        <div class="filters-section">
+            <h3>סינונים</h3>
+            <select id="locationFilter" class="filter-select">
+                <option value="all">הכל</option>
+            </select>
+        </div>
+    </div>
+
+    <!-- Main Content -->
+    <div class="main-content">
+        <header>
+            <h1>🛡️ לוח בקרה ניהולי</h1>
+            <p>העלאת קבצי לקוחות, חיפוש רשומות וצפייה בנתונים.</p>
+        </header>
+
+        <div id="welcomeMessage" class="info-message">
+            👋 ברוך הבא! אנא העלה קבצי נתונים (Excel/CSV) דרך התפריט הצדדי.
+        </div>
+
+        <!-- Location Details Section (Initially Hidden) -->
+        <section class="location-details-section" id="locationDetailsSection" style="display: none;">
+            <div style="display: flex; align-items: center; gap: 16px; margin-bottom: 24px;">
+                <button class="btn-back" onclick="closeLocationDetails()">→ חזרה ללוח הבקרה</button>
+                <h2 id="locationDetailsTitle">לקוחות בעיר</h2>
+            </div>
+
+            <!-- In-City Search -->
+            <input type="text" id="citySearchInput" class="search-input" placeholder="חפש לקוח בתוך העיר..."
+                style="margin-bottom: 24px;">
+
+            <div id="locationClientsList"></div>
+        </section>
+
+        <!-- Search Section -->
+        <section class="search-section" id="searchSection" style="display: none;">
+            <h2>🔍 חיפוש עסק</h2>
+            <input type="text" id="searchInput" class="search-input" placeholder="הקלד שם עסק...">
+            <div id="searchResults"></div>
+        </section>
+
+        <!-- Analytics Section -->
+        <section class="analytics-section" id="analyticsSection" style="display: none;">
+            <h2>📊 ניתוח לפי ערים - 10 המובילות</h2>
+
+            <div class="metrics">
+                <div class="metric-card">
+                    <div class="metric-label">סה״כ לקוחות</div>
+                    <div class="metric-value" id="totalClients">0</div>
+                </div>
+                <div class="metric-card">
+                    <div class="metric-label">ערים ייחודיות</div>
+                    <div class="metric-value" id="uniqueLocations">0</div>
+                </div>
+                <div class="metric-card">
+                    <div class="metric-label">עיר מובילה</div>
+                    <div class="metric-value" id="topLocation">N/A</div>
+                </div>
+            </div>
+
+            <div class="locations-grid" id="locationsGrid"></div>
+        </section>
+
+        <!-- Data Matrix Section -->
+        <section class="matrix-section" id="matrixSection" style="display: none;">
+            <h2>📋 מאגר נתונים מלא</h2>
+            <div class="table-container">
+                <table id="dataTable">
+                    <thead>
+                        <tr id="tableHeader"></tr>
+                    </thead>
+                    <tbody id="tableBody"></tbody>
+                </table>
+            </div>
+            <div class="pagination">
+                <button class="btn-primary" id="prevPage" onclick="changePage(-1)"
+                    style="width: auto; padding: 8px 16px;">הקודם</button>
+                <span id="pageInfo" style="color: #a0aec0;">עמוד 1</span>
+                <button class="btn-primary" id="nextPage" onclick="changePage(1)"
+                    style="width: auto; padding: 8px 16px;">הבא</button>
+            </div>
+        </section>
+    </div>
+
+    <script src="{{ url_for('static', filename='js/dashboard.js') }}"></script>
+</body>
+
+</html>
