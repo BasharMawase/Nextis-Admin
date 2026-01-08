@@ -126,41 +126,66 @@
     </div>
 
     <!-- Reviews Section -->
-    <div class="reviews-section" style="background-color: #1a1d29; padding: 60px 20px;">
-        <h2 style="text-align: center; margin-bottom: 40px; font-size: 2rem;">מה הלקוחות אומרים עלינו</h2>
-
-        <div id="reviewsGrid"
-            style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 20px; max-width: 1200px; margin: 0 auto;">
-            <!-- Reviews will be loaded here -->
+    <div class="reviews-section"
+        style="background: linear-gradient(180deg, #1a1d29 0%, #171b2d 100%); padding: 80px 20px; position: relative; overflow: hidden;">
+        <!-- Background Elements -->
+        <div
+            style="position: absolute; top: -100px; left: -100px; width: 400px; height: 400px; background: rgba(230, 57, 70, 0.1); border-radius: 50%; blur(100px); filter: blur(80px); pointer-events: none;">
         </div>
 
+        <h2
+            style="text-align: center; margin-bottom: 50px; font-size: 2.5rem; font-weight: 800; background: linear-gradient(135deg, #fff 0%, #cbd5e0 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent;">
+            מה הלקוחות אומרים עלינו</h2>
+
+        <!-- Scrolling Container -->
+        <div class="reviews-container" style="
+            display: flex; 
+            gap: 24px; 
+            overflow-x: auto; 
+            padding: 20px 40px; 
+            scroll-behavior: smooth; 
+            -webkit-overflow-scrolling: touch; 
+            scrollbar-width: none; /* Hide scrollbar Firefox */
+        ">
+            <!-- Reviews injected here -->
+        </div>
+
+        <!-- Add Review Form (Glassmorphism) -->
         <div
-            style="max-width: 600px; margin: 60px auto; background: #1e2330; padding: 30px; border-radius: 12px; border: 1px solid #2d3748;">
-            <h3 style="margin-bottom: 20px; text-align: center;">הוסף ביקורת</h3>
+            style="max-width: 500px; margin: 60px auto; background: rgba(255, 255, 255, 0.05); padding: 40px; border-radius: 20px; border: 1px solid rgba(255, 255, 255, 0.1); backdrop-filter: blur(10px); box-shadow: 0 20px 40px rgba(0,0,0,0.3);">
+            <h3 style="margin-bottom: 24px; text-align: center; font-size: 1.5rem; font-weight: 700;">הוסף את חוות דעתך
+            </h3>
             <form id="reviewForm" onsubmit="submitReview(event)">
-                <div style="margin-bottom: 15px;">
-                    <label style="display: block; margin-bottom: 5px;">שם (אופציונלי)</label>
-                    <input type="text" id="reviewName"
-                        style="width: 100%; padding: 10px; border-radius: 6px; border: 1px solid #4a5568; background: #0e1117; color: white;">
+                <div style="margin-bottom: 20px;">
+                    <label style="display: block; margin-bottom: 8px; font-size: 0.9rem; color: #a0aec0;">שם מלא</label>
+                    <input type="text" id="reviewName" placeholder="איך לקרוא לך?"
+                        style="width: 100%; padding: 14px; border-radius: 12px; border: 1px solid rgba(255,255,255,0.1); background: rgba(0,0,0,0.2); color: white; transition: 0.3s; outline: none;">
                 </div>
-                <div style="margin-bottom: 15px;">
-                    <label style="display: block; margin-bottom: 5px;">דירוג</label>
-                    <select id="reviewRating"
-                        style="width: 100%; padding: 10px; border-radius: 6px; border: 1px solid #4a5568; background: #0e1117; color: white;">
-                        <option value="5">⭐⭐⭐⭐⭐ (מעולה)</option>
-                        <option value="4">⭐⭐⭐⭐ (טוב מאוד)</option>
-                        <option value="3">⭐⭐⭐ (נחמד)</option>
-                        <option value="2">⭐⭐ (טעון שיפור)</option>
-                        <option value="1">⭐ (לא מרוצה)</option>
-                    </select>
+                <div style="margin-bottom: 20px;">
+                    <label style="display: block; margin-bottom: 8px; font-size: 0.9rem; color: #a0aec0;">דירוג
+                        שירות</label>
+                    <div class="rating-select"
+                        style="display: flex; gap: 10px; flex-direction: row-reverse; justify-content: center;">
+                        <input type="radio" name="rating" value="5" id="star5" checked style="display:none"><label
+                            for="star5" style="cursor: pointer; font-size: 24px; transition: 0.2s;">⭐</label>
+                        <input type="radio" name="rating" value="4" id="star4" style="display:none"><label for="star4"
+                            style="cursor: pointer; font-size: 24px; transition: 0.2s;">⭐</label>
+                        <input type="radio" name="rating" value="3" id="star3" style="display:none"><label for="star3"
+                            style="cursor: pointer; font-size: 24px; transition: 0.2s;">⭐</label>
+                        <input type="radio" name="rating" value="2" id="star2" style="display:none"><label for="star2"
+                            style="cursor: pointer; font-size: 24px; transition: 0.2s;">⭐</label>
+                        <input type="radio" name="rating" value="1" id="star1" style="display:none"><label for="star1"
+                            style="cursor: pointer; font-size: 24px; transition: 0.2s;">⭐</label>
+                    </div>
                 </div>
-                <div style="margin-bottom: 15px;">
-                    <label style="display: block; margin-bottom: 5px;">תוכן הביקורת</label>
-                    <textarea id="reviewComment" rows="3" required
-                        style="width: 100%; padding: 10px; border-radius: 6px; border: 1px solid #4a5568; background: #0e1117; color: white;"></textarea>
+                <div style="margin-bottom: 24px;">
+                    <label style="display: block; margin-bottom: 8px; font-size: 0.9rem; color: #a0aec0;">הדעה
+                        שלך</label>
+                    <textarea id="reviewComment" rows="3" required placeholder="כתוב כאן..."
+                        style="width: 100%; padding: 14px; border-radius: 12px; border: 1px solid rgba(255,255,255,0.1); background: rgba(0,0,0,0.2); color: white; transition: 0.3s; outline: none;"></textarea>
                 </div>
-                <button type="submit" class="action-btn" style="width: 100%; font-size: 1rem; cursor: pointer;">שלח
-                    ביקורת</button>
+                <button type="submit" class="action-btn"
+                    style="width: 100%; font-size: 1.1rem; cursor: pointer; border: none;">פרסם ביקורת</button>
             </form>
         </div>
     </div>
@@ -170,18 +195,45 @@
             try {
                 const response = await fetch('/api/reviews');
                 const reviews = await response.json();
-                const grid = document.getElementById('reviewsGrid');
-                grid.innerHTML = '';
+                const container = document.querySelector('.reviews-container');
+                container.innerHTML = '';
+
+                if (reviews.length === 0) {
+                    container.innerHTML = '<p style="text-align:center; width:100%; color:#718096">אין עדיין ביקורות. היה הראשון לדרג!</p>';
+                    return;
+                }
 
                 reviews.forEach(r => {
+                    const avatarLetter = r.username.charAt(0).toUpperCase();
                     const card = document.createElement('div');
-                    card.style.cssText = 'background: #252b3b; padding: 20px; border-radius: 10px; border: 1px solid #2d3748;';
-                    card.innerHTML = `
-                        <div style="color: #e63946; font-size: 1.2rem; margin-bottom: 10px;">${'⭐'.repeat(r.rating)}</div>
-                        <p style="margin-bottom: 15px; line-height: 1.5;">"${r.comment}"</p>
-                        <div style="color: #a0aec0; font-size: 0.9rem;">- ${r.username}</div>
+                    card.style.cssText = `
+                        min-width: 320px;
+                        max-width: 320px;
+                        background: rgba(30, 35, 48, 0.6);
+                        backdrop-filter: blur(12px);
+                        padding: 24px;
+                        border-radius: 16px;
+                        border: 1px solid rgba(255, 255, 255, 0.08);
+                        display: flex;
+                        flex-direction: column;
+                        transition: transform 0.3s ease;
+                        box-shadow: 0 4px 20px rgba(0,0,0,0.2);
                     `;
-                    grid.appendChild(card);
+                    card.onmouseover = () => card.style.transform = 'translateY(-5px)';
+                    card.onmouseout = () => card.style.transform = 'translateY(0)';
+
+                    card.innerHTML = `
+                        <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 16px;">
+                            <div style="width: 40px; height: 40px; background: linear-gradient(135deg, #e63946, #c1121f); border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: bold; font-size: 1.1rem;">${avatarLetter}</div>
+                            <div>
+                                <div style="font-weight: 700; font-size: 1rem;">${r.username}</div>
+                                <div style="color: #ffd700; font-size: 0.9rem;">${'⭐'.repeat(r.rating)}</div>
+                            </div>
+                        </div>
+                        <p style="color: #cbd5e0; line-height: 1.6; font-size: 0.95rem; flex: 1;">"${r.comment}"</p>
+                        <div style="margin-top: 16px; font-size: 0.8rem; color: #718096; text-align: left;">${new Date(r.created_at || Date.now()).toLocaleDateString('he-IL')}</div>
+                    `;
+                    container.appendChild(card);
                 });
             } catch (e) {
                 console.error('Error loading reviews:', e);
@@ -190,15 +242,16 @@
 
         async function submitReview(e) {
             e.preventDefault();
+            const ratingEl = document.querySelector('input[name="rating"]:checked');
             const data = {
-                username: document.getElementById('reviewName').value || 'לקוח מרוצה',
-                rating: parseInt(document.getElementById('reviewRating').value),
+                username: document.getElementById('reviewName').value || 'אנונימי',
+                rating: ratingEl ? parseInt(ratingEl.value) : 5,
                 comment: document.getElementById('reviewComment').value
             };
 
             const btn = e.target.querySelector('button');
             const originalText = btn.textContent;
-            btn.textContent = 'שולח...';
+            btn.textContent = 'מפרסם...';
             btn.disabled = true;
 
             try {
@@ -208,17 +261,17 @@
                     body: JSON.stringify(data)
                 });
                 document.getElementById('reviewForm').reset();
-                loadReviews(); // Reload
-                alert('תודה על המשוב!');
+                loadReviews();
+                // Scroll to start
+                document.querySelector('.reviews-container').scrollTo({ left: 0, behavior: 'smooth' });
             } catch (e) {
-                alert('שגיאה בשליחת ביקורת');
+                alert('שגיאה בשליחה');
             } finally {
                 btn.textContent = originalText;
                 btn.disabled = false;
             }
         }
 
-        // Initialize
         loadReviews();
     </script>
 </body>
