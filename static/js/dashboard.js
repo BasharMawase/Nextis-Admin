@@ -157,9 +157,12 @@ function displaySearchResults(results, container) {
 }
 
 const clientDetailsModal = document.getElementById('clientDetailsModal');
+let currentViewingClient = null;
 
 function openClientDetails(client) {
+    currentViewingClient = client;
     const name = client.business_name || client['Business Name'] || 'לא ידוע';
+
     document.getElementById('detailBusinessName').textContent = name;
 
     const container = document.getElementById('dynamicDetails');
@@ -280,6 +283,139 @@ function closeAddClientModal() {
     modal.style.display = "none";
 }
 
+// Edit Client Logic
+const editClientModal = document.getElementById('editClientModal');
+
+function openEditClientModal(client) {
+    const container = document.getElementById('dynamicEditFields');
+    container.innerHTML = '';
+    document.getElementById('editClientId').value = client.id;
+
+    // We want to preserve specific fields at the top if they exist
+    const priorityFields = ['business_name', 'location', 'phone', 'anydesk'];
+    const labels = {
+        'business_name': 'שם עסק',
+        'location': 'עיר / מיקום',
+        'phone': 'טלפון',
+        'anydesk': 'AnyDesk'
+    };
+
+    // Add priority fields
+    priorityFields.forEach(field => {
+        const val = client[field] || '';
+        const group = createEditFieldGroup(field, labels[field] || field, val, true);
+        container.appendChild(group);
+    });
+
+    // Add extra fields (everything else in client object that isn't ID or created_at or priority)
+    Object.keys(client).forEach(key => {
+        if (priorityFields.includes(key) || ['id', 'created_at', 'extra_data', 'source_file'].includes(key)) return;
+        const val = client[key];
+        if (typeof val === 'object' || Array.isArray(val)) return; // Skip complex objects
+
+        const group = createEditFieldGroup(key, key, val, false);
+        container.appendChild(group);
+    });
+
+    editClientModal.style.display = "block";
+}
+
+function createEditFieldGroup(key, label, value, isFixed) {
+    const div = document.createElement('div');
+    div.className = 'form-group';
+    div.dataset.key = key;
+    div.innerHTML = `
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 5px;">
+            <label style="margin:0;">${label}</label>
+            ${!isFixed ? `<button type="button" onclick="this.parentElement.parentElement.remove()" style="background: none; border: none; color: #e63946; cursor: pointer; font-size: 0.8rem;">מחק שדה</button>` : ''}
+        </div>
+        <input type="text" class="modal-input field-value" value="${value}" ${isFixed && key === 'business_name' ? 'required' : ''}>
+    `;
+    return div;
+}
+
+function addNewFieldRow() {
+    const nameInput = document.getElementById('newFieldName');
+    const valueInput = document.getElementById('newFieldValue');
+    const name = nameInput.value.trim();
+    const value = valueInput.value.trim();
+
+    if (!name) return alert("אנא הזן שם לשדה");
+
+    // Check if key already exists
+    const container = document.getElementById('dynamicEditFields');
+    const existing = Array.from(container.querySelectorAll('.form-group')).find(g => g.dataset.key === name);
+    if (existing) return alert("שדה זה כבר קיים");
+
+    const group = createEditFieldGroup(name, name, value, false);
+    container.appendChild(group);
+
+    // Clear inputs and add a nice visual feedback
+    nameInput.value = '';
+    valueInput.value = '';
+
+    // Scroll to the new field
+    group.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+
+    // Highlight the new field briefly
+    group.style.animation = 'fadeIn 0.3s ease-in';
+}
+
+function openEditClientModalFromDetails() {
+    if (currentViewingClient) {
+        closeClientDetailsModal();
+        openEditClientModal(currentViewingClient);
+    }
+}
+
+function closeEditClientModal() {
+    editClientModal.style.display = "none";
+}
+
+async function submitEditClient(event) {
+    event.preventDefault();
+    const id = document.getElementById('editClientId').value;
+
+    // Collect all fields
+    const clientData = {};
+    const fieldGroups = document.querySelectorAll('#dynamicEditFields .form-group');
+    fieldGroups.forEach(group => {
+        const key = group.dataset.key;
+        const val = group.querySelector('.field-value').value;
+        clientData[key] = val;
+    });
+
+    const btn = event.target.querySelector('button[type="submit"]');
+    const originalText = btn.textContent;
+    btn.textContent = 'שומר...';
+    btn.disabled = true;
+
+    try {
+        const response = await fetch(`/api/clients/update/${id}`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(clientData)
+        });
+
+        const data = await response.json();
+        if (data.success) {
+            closeEditClientModal();
+            loadAnalytics();
+            loadMatrix();
+            alert("הפרטים עודכנו בהצלחה!");
+        } else {
+            alert('שגיאה בעדכון לקוח: ' + (data.error || 'שגיאה לא ידועה'));
+        }
+    } catch (error) {
+        console.error('Error:', error);
+        alert('שגיאה בעדכון לקוח');
+    } finally {
+        btn.textContent = originalText;
+        btn.disabled = false;
+    }
+}
+
+
 // Close if click outside
 window.onclick = function (event) {
     if (event.target == modal) {
@@ -288,7 +424,11 @@ window.onclick = function (event) {
     if (event.target == clientDetailsModal) {
         clientDetailsModal.style.display = "none";
     }
+    if (event.target == editClientModal) {
+        editClientModal.style.display = "none";
+    }
 }
+
 
 async function submitAddClient(event) {
     event.preventDefault();
