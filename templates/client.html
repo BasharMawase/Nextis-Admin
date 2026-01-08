@@ -1,0 +1,226 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Nextis - פתרונות קופה חכמים</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/dashboard.css') }}">
+    <style>
+        /* Specific Styles for Client Page Override */
+        body {
+            display: block;
+            /* Reset flex from dashboard */
+            background-color: #1a1d29;
+            color: white;
+            padding: 0;
+            overflow-x: hidden;
+        }
+
+        .hero-section {
+            height: 80vh;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            text-align: center;
+            background: radial-gradient(circle at top, #2d3748 0%, #1a1d29 100%);
+            padding: 20px;
+        }
+
+        .hero-title {
+            font-size: 4rem;
+            font-weight: 800;
+            margin-bottom: 1rem;
+            background: linear-gradient(135deg, #ffffff 0%, #a0aec0 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .hero-subtitle {
+            font-size: 1.5rem;
+            color: #cbd5e0;
+            max-width: 600px;
+            margin-bottom: 2rem;
+        }
+
+        .action-btn {
+            background-color: #e63946;
+            color: white;
+            padding: 16px 40px;
+            font-size: 1.25rem;
+            border-radius: 50px;
+            text-decoration: none;
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+            box-shadow: 0 10px 20px rgba(230, 57, 70, 0.3);
+        }
+
+        .action-btn:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 15px 30px rgba(230, 57, 70, 0.4);
+            background-color: #c1121f;
+        }
+
+        /* Ticker Position */
+        .services-belt-wrapper {
+            position: absolute;
+            bottom: 0;
+            width: 100%;
+            background: rgba(30, 35, 48, 0.8);
+            backdrop-filter: blur(10px);
+            border-top: 1px solid #2d3748;
+        }
+
+        .services-ticker-container {
+            margin-bottom: 0;
+            /* Override */
+            background: transparent;
+            border: none;
+            box-shadow: none;
+        }
+    </style>
+</head>
+
+<body>
+
+    <nav
+        style="padding: 20px; position: absolute; top: 0; width: 100%; display: flex; justify-content: space-between; align-items: center;">
+        <div style="font-size: 24px;">🛡️ <span style="font-weight: bold;">Nextis</span></div>
+        <a href="/admin" style="color: #a0aec0; text-decoration: none; font-size: 14px;">כניסת מנהלים &rarr;</a>
+    </nav>
+
+    <div class="hero-section">
+        <h1 class="hero-title">העסק שלך, חכם יותר.</h1>
+        <p class="hero-subtitle">מערכות קופה מתקדמות, ניהול מלאי וסליקת אשראי בפלטפורמה אחת פשוטה ועוצמתית.</p>
+
+        <a href="#" class="action-btn">התחל עכשיו</a>
+
+        <!-- Services Belt Sticky Bottom of Hero -->
+        <div class="services-belt-wrapper">
+            <div class="services-ticker-container">
+                <div class="services-ticker">
+                    <span class="service-item">💻 קופות ממוחשבות</span>
+                    <span class="service-item">💳 סליקת אשראי</span>
+                    <span class="service-item">📦 ניהול מלאי</span>
+                    <span class="service-item">📱 תפריט דיגיטלי</span>
+                    <span class="service-item">🕒 שעון נוכחות</span>
+                    <span class="service-item">⚖️ משקלים</span>
+                    <span class="service-item">📊 דוחות מתקדמים</span>
+                    <!-- Duplicate -->
+                    <span class="service-item">💻 קופות ממוחשבות</span>
+                    <span class="service-item">💳 סליקת אשראי</span>
+                    <span class="service-item">📦 ניהול מלאי</span>
+                    <span class="service-item">📱 תפריט דיגיטלי</span>
+                    <span class="service-item">🕒 שעון נוכחות</span>
+                    <span class="service-item">⚖️ משקלים</span>
+                    <span class="service-item">📊 דוחות מתקדמים</span>
+                    <!-- Triplicate for safety -->
+                    <span class="service-item">💻 קופות ממוחשבות</span>
+                    <span class="service-item">💳 סליקת אשראי</span>
+                    <span class="service-item">📦 ניהול מלאי</span>
+                    <span class="service-item">📱 תפריט דיגיטלי</span>
+                    <span class="service-item">🕒 שעון נוכחות</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Reviews Section -->
+    <div class="reviews-section" style="background-color: #1a1d29; padding: 60px 20px;">
+        <h2 style="text-align: center; margin-bottom: 40px; font-size: 2rem;">מה הלקוחות אומרים עלינו</h2>
+
+        <div id="reviewsGrid"
+            style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 20px; max-width: 1200px; margin: 0 auto;">
+            <!-- Reviews will be loaded here -->
+        </div>
+
+        <div
+            style="max-width: 600px; margin: 60px auto; background: #1e2330; padding: 30px; border-radius: 12px; border: 1px solid #2d3748;">
+            <h3 style="margin-bottom: 20px; text-align: center;">הוסף ביקורת</h3>
+            <form id="reviewForm" onsubmit="submitReview(event)">
+                <div style="margin-bottom: 15px;">
+                    <label style="display: block; margin-bottom: 5px;">שם (אופציונלי)</label>
+                    <input type="text" id="reviewName"
+                        style="width: 100%; padding: 10px; border-radius: 6px; border: 1px solid #4a5568; background: #0e1117; color: white;">
+                </div>
+                <div style="margin-bottom: 15px;">
+                    <label style="display: block; margin-bottom: 5px;">דירוג</label>
+                    <select id="reviewRating"
+                        style="width: 100%; padding: 10px; border-radius: 6px; border: 1px solid #4a5568; background: #0e1117; color: white;">
+                        <option value="5">⭐⭐⭐⭐⭐ (מעולה)</option>
+                        <option value="4">⭐⭐⭐⭐ (טוב מאוד)</option>
+                        <option value="3">⭐⭐⭐ (נחמד)</option>
+                        <option value="2">⭐⭐ (טעון שיפור)</option>
+                        <option value="1">⭐ (לא מרוצה)</option>
+                    </select>
+                </div>
+                <div style="margin-bottom: 15px;">
+                    <label style="display: block; margin-bottom: 5px;">תוכן הביקורת</label>
+                    <textarea id="reviewComment" rows="3" required
+                        style="width: 100%; padding: 10px; border-radius: 6px; border: 1px solid #4a5568; background: #0e1117; color: white;"></textarea>
+                </div>
+                <button type="submit" class="action-btn" style="width: 100%; font-size: 1rem; cursor: pointer;">שלח
+                    ביקורת</button>
+            </form>
+        </div>
+    </div>
+
+    <script>
+        async function loadReviews() {
+            try {
+                const response = await fetch('/api/reviews');
+                const reviews = await response.json();
+                const grid = document.getElementById('reviewsGrid');
+                grid.innerHTML = '';
+
+                reviews.forEach(r => {
+                    const card = document.createElement('div');
+                    card.style.cssText = 'background: #252b3b; padding: 20px; border-radius: 10px; border: 1px solid #2d3748;';
+                    card.innerHTML = `
+                        <div style="color: #e63946; font-size: 1.2rem; margin-bottom: 10px;">${'⭐'.repeat(r.rating)}</div>
+                        <p style="margin-bottom: 15px; line-height: 1.5;">"${r.comment}"</p>
+                        <div style="color: #a0aec0; font-size: 0.9rem;">- ${r.username}</div>
+                    `;
+                    grid.appendChild(card);
+                });
+            } catch (e) {
+                console.error('Error loading reviews:', e);
+            }
+        }
+
+        async function submitReview(e) {
+            e.preventDefault();
+            const data = {
+                username: document.getElementById('reviewName').value || 'לקוח מרוצה',
+                rating: parseInt(document.getElementById('reviewRating').value),
+                comment: document.getElementById('reviewComment').value
+            };
+
+            const btn = e.target.querySelector('button');
+            const originalText = btn.textContent;
+            btn.textContent = 'שולח...';
+            btn.disabled = true;
+
+            try {
+                await fetch('/api/reviews', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(data)
+                });
+                document.getElementById('reviewForm').reset();
+                loadReviews(); // Reload
+                alert('תודה על המשוב!');
+            } catch (e) {
+                alert('שגיאה בשליחת ביקורת');
+            } finally {
+                btn.textContent = originalText;
+                btn.disabled = false;
+            }
+        }
+
+        // Initialize
+        loadReviews();
+    </script>
+</body>
+
+</html>

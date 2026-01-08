@@ -1,12 +1,14 @@
-from flask import Flask, render_template, request, jsonify
+from flask import Flask, render_template, request, jsonify, session, redirect, url_for, flash
 import pandas as pd
 import os
 import sqlite3
 import json
 import uuid
 from werkzeug.utils import secure_filename
+from werkzeug.security import generate_password_hash, check_password_hash
 
 app = Flask(__name__)
+app.secret_key = 'nextis_secret_key_change_in_production'
 app.config['UPLOAD_FOLDER'] = 'uploads'
 app.config['DB_NAME'] = 'nexsis.db'
 os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
@@ -18,7 +20,7 @@ def get_db_connection():
 
 def init_db():
     conn = get_db_connection()
-    conn.execute('''
+    conn.executescript('''
         CREATE TABLE IF NOT EXISTS clients (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             business_name TEXT,
@@ -28,7 +30,21 @@ def init_db():
             source_file TEXT,
             extra_data TEXT,
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-        )
+        );
+        CREATE TABLE IF NOT EXISTS users (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            username TEXT UNIQUE,
+            password TEXT,
+            role TEXT,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        );
+        CREATE TABLE IF NOT EXISTS reviews (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            username TEXT,
+            rating INTEGER,
+            comment TEXT,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        );
     ''')
     conn.commit()
     conn.close()
@@ -157,9 +173,85 @@ def process_excel(file_path):
     
     return df
 
+@app.route('/login', methods=['GET', 'POST'])
+def login():
+    if request.method == 'POST':
+        username = request.form['username']
+        password = request.form['password']
+        
+        conn = get_db_connection()
+        user = conn.execute('SELECT * FROM users WHERE username = ?', (username,)).fetchone()
+        conn.close()
+        
+        if user and check_password_hash(user['password'], password):
+            session['user_id'] = user['id']
+            session['username'] = user['username']
+            session['role'] = user['role']
+            
+            if user['role'] == 'admin':
+                return redirect(url_for('admin_dashboard'))
+            else:
+                return redirect(url_for('client_home'))
+        else:
+            flash('Invalid username or password')
+            
+    return render_template('login.html')
+
+@app.route('/register', methods=['GET', 'POST'])
+def register():
+    if request.method == 'POST':
+        username = request.form['username']
+        password = request.form['password']
+        secret_code = request.form.get('secret_code', '')
+        
+        role = 'client'
+        if secret_code == 'Admin123':  # Simple admin code
+            role = 'admin'
+            
+        hashed_pw = generate_password_hash(password)
+        
+        try:
+            conn = get_db_connection()
+            conn.execute('INSERT INTO users (username, password, role) VALUES (?, ?, ?)',
+                         (username, hashed_pw, role))
+            conn.commit()
+            conn.close()
+            flash('Registration successful! Please login.')
+            return redirect(url_for('login'))
+        except sqlite3.IntegrityError:
+            flash('Username already exists')
+            
+    return render_template('register.html')
+
+@app.route('/logout')
+def logout():
+    session.clear()
+    return redirect(url_for('login'))
+
+@app.route('/admin')
+def admin_dashboard():
+    if 'role' not in session or session['role'] != 'admin':
+        return redirect(url_for('login'))
+    return render_template('dashboard.html', username=session['username'])
+
+@app.route('/api/reviews', methods=['GET', 'POST'])
+def handle_reviews():
+    conn = get_db_connection()
+    if request.method == 'POST':
+        data = request.json
+        conn.execute('INSERT INTO reviews (username, rating, comment) VALUES (?, ?, ?)',
+                     (data.get('username', 'Anonymous'), data.get('rating'), data.get('comment')))
+        conn.commit()
+        conn.close()
+        return jsonify({'success': True})
+    
+    reviews = conn.execute('SELECT * FROM reviews ORDER BY id DESC').fetchall()
+    conn.close()
+    return jsonify([dict(r) for r in reviews])
+
 @app.route('/')
-def index():
-    return render_template('dashboard.html')
+def client_home():
+    return render_template('client.html')
 
 @app.route('/api/upload', methods=['POST'])
 def upload_file():

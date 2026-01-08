@@ -41,12 +41,10 @@ body {
 }
 
 .upload-section,
-.filters-section {
     margin-bottom: 32px;
 }
 
 .upload-section h3,
-.filters-section h3 {
     font-size: 14px;
     font-weight: 600;
     margin-bottom: 12px;
@@ -525,4 +523,42 @@ tr:hover {
     gap: 16px;
     margin-top: 20px;
     align-items: center;
+}
+
+/* Services Ticker */
+.services-ticker-container {
+    background: linear-gradient(90deg, #1e2330 0%, #252b3b 50%, #1e2330 100%);
+    border-bottom: 1px solid #2d3748;
+    overflow: hidden;
+    padding: 12px 0;
+    margin-bottom: 24px;
+    white-space: nowrap;
+    position: relative;
+    border-radius: 8px;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+}
+
+.services-ticker {
+    display: inline-block;
+    white-space: nowrap;
+    animation: ticker 40s linear infinite;
+}
+
+.service-item {
+    display: inline-block;
+    padding: 0 40px;
+    color: #cbd5e0;
+    font-size: 15px;
+    font-weight: 600;
+    border-left: 1px solid #4a5568;
+}
+
+@keyframes ticker {
+    0% {
+        transform: translateX(0);
+    }
+
+    100% {
+        transform: translateX(-50%);
+    }
 }
