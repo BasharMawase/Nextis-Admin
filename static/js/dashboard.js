@@ -4,6 +4,56 @@ const uploadBox = document.getElementById('uploadBox');
 const searchInput = document.getElementById('searchInput');
 const searchResults = document.getElementById('searchResults');
 
+// Sidebar Toggle
+function toggleSidebar() {
+    const sidebar = document.getElementById('sidebar');
+    const toggleIcon = document.getElementById('toggleIcon');
+
+    sidebar.classList.toggle('collapsed');
+
+    if (sidebar.classList.contains('collapsed')) {
+        toggleIcon.textContent = '▶'; // Point right when collapsed
+    } else {
+        toggleIcon.textContent = '◀'; // Point left when expanded
+    }
+}
+
+// Phone number formatting function
+function formatPhoneDisplay(phone) {
+    if (!phone || phone === 'אין' || phone === '' || phone === '-') {
+        return 'אין';
+    }
+
+    // Remove all non-digit characters
+    let digits = phone.replace(/\D/g, '');
+
+    // Handle country code
+    if (digits.startsWith('972')) {
+        digits = '0' + digits.substring(3);
+    }
+
+    // If number doesn't start with 0 but is 9 digits, add 0
+    if (!digits.startsWith('0') && digits.length === 9) {
+        digits = '0' + digits;
+    }
+
+    // Format based on length and prefix
+    if (digits.length === 10 && digits.startsWith('05')) {
+        // Mobile: 05X-XXXXXXX
+        return `${digits.substring(0, 3)}-${digits.substring(3)}`;
+    } else if (digits.length === 9 && digits.startsWith('0') && !digits.startsWith('05')) {
+        // Landline: 0X-XXXXXXX
+        return `${digits.substring(0, 2)}-${digits.substring(2)}`;
+    } else if (digits.length === 10 && digits.startsWith('0')) {
+        // Generic 10-digit: 0XX-XXXXXXX
+        return `${digits.substring(0, 3)}-${digits.substring(3)}`;
+    }
+
+    // Return original if doesn't match expected patterns
+    return phone;
+}
+
+
 // City Search Logic
 let currentCityClients = [];
 const citySearchInput = document.getElementById('citySearchInput');
@@ -148,7 +198,7 @@ function displaySearchResults(results, container) {
             <div class="card-title">${name}</div>
             <div class="card-detail">📍 <strong>עיר:</strong> ${location}</div>
             <div class="card-detail" style="color: #2a9d8f; font-weight: 600;">
-                📞 <strong>טלפון:</strong> ${phone}
+                📞 <strong>טלפון:</strong> ${formatPhoneDisplay(phone)}
             </div>
             <span class="anydesk-badge">💻 AnyDesk: ${anydesk}</span>
         `;
@@ -294,9 +344,9 @@ function openEditClientModal(client) {
     // We want to preserve specific fields at the top if they exist
     const priorityFields = ['business_name', 'location', 'phone', 'anydesk'];
     const labels = {
-        'business_name': 'שם עסק',
-        'location': 'עיר / מיקום',
-        'phone': 'טלפון',
+        'business_name': 'שם העסק',
+        'location': 'עיר',
+        'phone': 'מספר טלפון',
         'anydesk': 'AnyDesk'
     };
 
@@ -340,12 +390,12 @@ function addNewFieldRow() {
     const name = nameInput.value.trim();
     const value = valueInput.value.trim();
 
-    if (!name) return alert("אנא הזן שם לשדה");
+    if (!name) return alert("אנא הזן שם לשדה החדש");
 
     // Check if key already exists
     const container = document.getElementById('dynamicEditFields');
     const existing = Array.from(container.querySelectorAll('.form-group')).find(g => g.dataset.key === name);
-    if (existing) return alert("שדה זה כבר קיים");
+    if (existing) return alert("שדה בשם זה כבר קיים");
 
     const group = createEditFieldGroup(name, name, value, false);
     container.appendChild(group);
@@ -404,11 +454,11 @@ async function submitEditClient(event) {
             loadMatrix();
             alert("הפרטים עודכנו בהצלחה!");
         } else {
-            alert('שגיאה בעדכון לקוח: ' + (data.error || 'שגיאה לא ידועה'));
+            alert('שגיאה בעדכון הלקוח: ' + (data.error || 'שגיאה לא ידועה'));
         }
     } catch (error) {
         console.error('Error:', error);
-        alert('שגיאה בעדכון לקוח');
+        alert('שגיאה בעדכון הלקוח');
     } finally {
         btn.textContent = originalText;
         btn.disabled = false;
@@ -466,11 +516,11 @@ async function submitAddClient(event) {
             loadAnalytics();
             alert("הלקוח נוסף בהצלחה!");
         } else {
-            alert('שגיאה הוספת לקוח: ' + (data.error || 'שגיאה לא ידועה'));
+            alert('שגיאה בהוספת הלקוח: ' + (data.error || 'שגיאה לא ידועה'));
         }
     } catch (error) {
         console.error('Error:', error);
-        alert('שגיאה הוספת לקוח');
+        alert('שגיאה בהוספת הלקוח');
     } finally {
         btn.textContent = originalText;
         btn.disabled = false;
@@ -498,6 +548,9 @@ async function openLocationDetails(location) {
         currentCityClients = clients; // Store for filtering
         displaySearchResults(clients, listContainer);
 
+        // Render city data matrix
+        renderCityMatrix(clients);
+
     } catch (error) {
         console.error('Error fetching clients:', error);
         listContainer.innerHTML = '<p style="color:red">שגיאה בטעינת לקוחות.</p>';
@@ -506,9 +559,90 @@ async function openLocationDetails(location) {
 
 }
 
+function renderCityMatrix(clients) {
+    const tableBody = document.getElementById('cityTableBody');
+    const tableHeader = document.getElementById('cityTableHeader');
+
+    if (!clients || clients.length === 0) {
+        tableBody.innerHTML = '<tr><td colspan="100%" style="text-align:center; padding: 20px;">אין נתונים להצגה</td></tr>';
+        tableHeader.innerHTML = '';
+        return;
+    }
+
+    // Collect ALL unique columns from all records
+    const allColumns = new Set();
+
+    // Priority columns that should appear first
+    const priorityCols = ['business_name', 'location', 'phone', 'anydesk', 'source_file'];
+
+    // Add all columns from all rows
+    clients.forEach(r => {
+        Object.keys(r).forEach(k => {
+            if (k !== 'extra_data' && k !== 'id' && k !== 'created_at') {
+                allColumns.add(k);
+            }
+        });
+    });
+
+    // Create ordered array: priority columns first, then others alphabetically
+    const colArray = [];
+    priorityCols.forEach(col => {
+        if (allColumns.has(col)) {
+            colArray.push(col);
+            allColumns.delete(col);
+        }
+    });
+
+    // Add remaining columns alphabetically
+    const remainingCols = Array.from(allColumns).sort((a, b) => a.localeCompare(b, 'he'));
+    colArray.push(...remainingCols);
+
+    const headerMap = {
+        'business_name': 'שם העסק',
+        'location': 'עיר',
+        'phone': 'מספר טלפון',
+        'anydesk': 'AnyDesk',
+        'source_file': 'קובץ מקור'
+    };
+
+    // Render Header
+    tableHeader.innerHTML = '';
+    colArray.forEach(col => {
+        const th = document.createElement('th');
+        th.textContent = headerMap[col] || col;
+        th.title = col; // Tooltip
+        tableHeader.appendChild(th);
+    });
+
+    // Render Body
+    tableBody.innerHTML = '';
+    clients.forEach(r => {
+        const tr = document.createElement('tr');
+        tr.onclick = () => openClientDetails(r);
+        tr.style.cursor = 'pointer';
+
+        colArray.forEach(col => {
+            const td = document.createElement('td');
+            let value = r[col];
+
+            // Format phone numbers
+            if (col === 'phone' || col.toLowerCase().includes('טלפון') || col.toLowerCase().includes('phone')) {
+                td.textContent = formatPhoneDisplay(value) || '-';
+            } else {
+                td.textContent = (value !== null && value !== undefined && value !== '') ? value : '-';
+            }
+
+            tr.appendChild(td);
+        });
+        tableBody.appendChild(tr);
+    });
+
+    console.log(`City matrix rendered with ${colArray.length} columns from ${clients.length} records`);
+}
+
 // Data Matrix Logic
 let currentPage = 1;
-const limit = 50;
+const limit = 100;  // Increased to show more data per page
 
 async function loadMatrix() {
     const tableBody = document.getElementById('tableBody');
@@ -544,22 +678,40 @@ function renderMatrix(rows) {
         return;
     }
 
-    // 1. Collect all columns
+    // 1. Collect ALL unique columns from all records
     const allColumns = new Set();
-    const mainCols = ['business_name', 'location', 'phone', 'anydesk', 'source_file'];
-    mainCols.forEach(c => allColumns.add(c));
 
-    rows.forEach(r => Object.keys(r).forEach(k => {
-        if (k !== 'extra_data' && k !== 'id' && k !== 'created_at' && !mainCols.includes(k)) {
-            allColumns.add(k);
+    // Priority columns that should appear first
+    const priorityCols = ['business_name', 'location', 'phone', 'anydesk', 'source_file'];
+
+    // First, add all columns from all rows to get complete picture
+    rows.forEach(r => {
+        Object.keys(r).forEach(k => {
+            // Skip internal fields
+            if (k !== 'extra_data' && k !== 'id' && k !== 'created_at') {
+                allColumns.add(k);
+            }
+        });
+    });
+
+    // Create ordered array: priority columns first, then others alphabetically
+    const colArray = [];
+    priorityCols.forEach(col => {
+        if (allColumns.has(col)) {
+            colArray.push(col);
+            allColumns.delete(col);
         }
-    }));
+    });
 
-    const colArray = Array.from(allColumns);
+    // Add remaining columns alphabetically
+    const remainingCols = Array.from(allColumns).sort((a, b) => a.localeCompare(b, 'he'));
+    colArray.push(...remainingCols);
+
+    // Hebrew header mappings
     const headerMap = {
-        'business_name': 'שם עסק',
-        'location': 'מיקום',
-        'phone': 'טלפון',
+        'business_name': 'שם העסק',
+        'location': 'עיר',
+        'phone': 'מספר טלפון',
         'anydesk': 'AnyDesk',
         'source_file': 'קובץ מקור'
     };
@@ -569,6 +721,7 @@ function renderMatrix(rows) {
     colArray.forEach(col => {
         const th = document.createElement('th');
         th.textContent = headerMap[col] || col;
+        th.title = col; // Tooltip showing original column name
         tableHeader.appendChild(th);
     });
 
@@ -577,14 +730,27 @@ function renderMatrix(rows) {
     rows.forEach(r => {
         const tr = document.createElement('tr');
         tr.onclick = () => openClientDetails(r); // Click to open modal
+        tr.style.cursor = 'pointer';
 
         colArray.forEach(col => {
             const td = document.createElement('td');
-            td.textContent = r[col] || '-';
+            let value = r[col];
+
+            // Format phone numbers
+            if (col === 'phone' || col.toLowerCase().includes('טלפון') || col.toLowerCase().includes('phone')) {
+                td.textContent = formatPhoneDisplay(value) || '-';
+            } else {
+                // Handle empty values
+                td.textContent = (value !== null && value !== undefined && value !== '') ? value : '-';
+            }
+
             tr.appendChild(td);
         });
         tableBody.appendChild(tr);
     });
+
+    // Add info message about total columns
+    console.log(`Matrix rendered with ${colArray.length} columns from ${rows.length} records`);
 }
 
 function changePage(delta) {

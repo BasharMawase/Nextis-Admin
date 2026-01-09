@@ -4,193 +4,776 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Nextis - פתרונות קופה חכמים</title>
+    <title>Nexsis - פתרונות קופה חכמים</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='css/dashboard.css') }}">
     <style>
-        /* Specific Styles for Client Page Override */
+        /* --- THEME VARIABLES --- */
+        :root {
+            /* Light Mode (Default) */
+            --bg-primary: #f7fafc;
+            --bg-secondary: #ffffff;
+            --bg-gradient-hero: radial-gradient(circle at top, #ffffff 0%, #edf2f7 100%);
+            --bg-gradient-section: linear-gradient(180deg, #f7fafc 0%, #edf2f7 100%);
+
+            --text-main: #2d3748;
+            --text-header: #000000;
+            --text-muted: #718096;
+
+            --card-bg: rgba(255, 255, 255, 0.8);
+            --card-border: rgba(0, 0, 0, 0.05);
+            --card-shadow: rgba(0, 0, 0, 0.05);
+
+            --nav-bg: rgba(255, 255, 255, 0.9);
+            --nav-border: #e2e8f0;
+
+            --accent: #e63946;
+        }
+
+        [data-theme="dark"] {
+            /* Dark Mode Overrides */
+            --bg-primary: #1a1d29;
+            --bg-secondary: #171b2d;
+            --bg-gradient-hero: radial-gradient(circle at top, #2d3748 0%, #1a1d29 100%);
+            --bg-gradient-section: linear-gradient(180deg, #171b2d 0%, #1a1d29 100%);
+
+            --text-main: #ffffff;
+            --text-header: #ffffff;
+            --text-muted: #a0aec0;
+
+            --card-bg: rgba(255, 255, 255, 0.03);
+            --card-border: rgba(255, 255, 255, 0.05);
+            --card-shadow: rgba(0, 0, 0, 0.4);
+
+            --nav-bg: rgba(26, 29, 41, 0.9);
+            --nav-border: rgba(255, 255, 255, 0.1);
+        }
+
+        /* Smooth Scrolling */
+        html {
+            scroll-behavior: smooth;
+        }
+
         body {
             display: block;
-            /* Reset flex from dashboard */
-            background-color: #1a1d29;
-            color: white;
+            background-color: var(--bg-primary);
+            color: var(--text-main);
             padding: 0;
             overflow-x: hidden;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            transition: background-color 0.3s ease, color 0.3s ease;
+        }
+
+        .section-title {
+            color: var(--text-header) !important;
         }
 
         .hero-section {
-            height: 80vh;
+            min-height: 90vh;
             display: flex;
             flex-direction: column;
             justify-content: center;
             align-items: center;
             text-align: center;
-            background: radial-gradient(circle at top, #2d3748 0%, #1a1d29 100%);
+            background: var(--bg-gradient-hero);
             padding: 20px;
+            position: relative;
         }
 
         .hero-title {
-            font-size: 4rem;
+            font-size: 5rem;
             font-weight: 800;
-            margin-bottom: 1rem;
+            margin-bottom: 1.5rem;
+            background: linear-gradient(135deg, var(--text-header) 0%, var(--text-main) 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            animation: fadeInUp 1s ease-out;
+            line-height: 1.1;
+        }
+
+        [data-theme="dark"] .hero-title {
             background: linear-gradient(135deg, #ffffff 0%, #a0aec0 100%);
             -webkit-background-clip: text;
             -webkit-text-fill-color: transparent;
         }
 
         .hero-subtitle {
-            font-size: 1.5rem;
-            color: #cbd5e0;
-            max-width: 600px;
-            margin-bottom: 2rem;
+            font-size: 1.8rem;
+            color: var(--text-muted);
+            max-width: 700px;
+            margin-bottom: 3rem;
+            animation: fadeInUp 1s ease-out 0.2s backwards;
         }
 
         .action-btn {
-            background-color: #e63946;
+            background-color: var(--accent);
             color: white;
-            padding: 16px 40px;
-            font-size: 1.25rem;
+            padding: 18px 50px;
+            font-size: 1.4rem;
             border-radius: 50px;
             text-decoration: none;
             transition: transform 0.3s ease, box-shadow 0.3s ease;
             box-shadow: 0 10px 20px rgba(230, 57, 70, 0.3);
+            animation: fadeInUp 1s ease-out 0.4s backwards;
+            border: none;
+            cursor: pointer;
         }
 
         .action-btn:hover {
             transform: translateY(-5px);
             box-shadow: 0 15px 30px rgba(230, 57, 70, 0.4);
-            background-color: #c1121f;
+            background-color: var(--accent-hover);
         }
 
-        /* Ticker Position */
-        .services-belt-wrapper {
-            position: absolute;
-            bottom: 0;
-            width: 100%;
-            background: rgba(30, 35, 48, 0.8);
+        /* --- THEME TOGGLE BUTTON --- */
+        .theme-toggle-btn {
+            position: fixed;
+            bottom: 30px;
+            left: 30px;
+            width: 50px;
+            height: 50px;
+            border-radius: 50%;
+            background: var(--nav-bg);
+            border: 1px solid var(--nav-border);
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+            color: var(--text-main);
+            font-size: 1.5rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            z-index: 9999;
+            transition: all 0.3s ease;
             backdrop-filter: blur(10px);
-            border-top: 1px solid #2d3748;
         }
 
-        .services-ticker-container {
-            margin-bottom: 0;
-            /* Override */
-            background: transparent;
+        .theme-toggle-btn:hover {
+            transform: scale(1.1);
+            background: var(--accent);
+            color: white;
+            border-color: var(--accent);
+        }
+
+        .nav-btn:hover {
+            background: rgba(230, 57, 70, 0.8) !important;
+            transform: scale(1.1);
+        }
+
+        .project-card-image:hover .gallery-nav {
+            opacity: 1 !important;
+        }
+
+        .services-grid {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+            gap: 30px;
+            max-width: 1200px;
+            margin: 0 auto;
+            position: relative;
+            z-index: 1;
+        }
+
+        .gallery-nav {
+            opacity: 0;
+            transition: opacity 0.3s ease;
+        }
+
+        /* Enhanced Service Cards */
+        /* Enhanced Service Cards */
+        /* Enhanced Service Cards - THEMED */
+        .service-card {
+            background: var(--card-bg);
+            border: 1px solid var(--card-border);
+            backdrop-filter: blur(10px);
+            padding: 40px 30px;
+            border-radius: 24px;
+            transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            position: relative;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            text-align: center;
+            flex: 1 1 300px;
+            max-width: 350px;
+            box-shadow: 0 10px 30px var(--card-shadow);
+        }
+
+        .service-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(135deg, rgba(230, 57, 70, 0.05) 0%, rgba(255, 255, 255, 0) 100%);
+            opacity: 0;
+            transition: opacity 0.4s ease;
+        }
+
+        .service-card:hover {
+            transform: translateY(-10px) scale(1.02);
+            box-shadow: 0 20px 40px var(--card-hover-shadow);
+            border-color: rgba(230, 57, 70, 0.3);
+            background: var(--bg-secondary);
+        }
+
+        [data-theme="dark"] .service-card:hover {
+            background: rgba(255, 255, 255, 0.08);
+            /* Brighter on dark hover */
+        }
+
+        .service-card:hover::before {
+            opacity: 1;
+        }
+
+        .service-icon {
+            font-size: 3.5rem;
+            margin-bottom: 20px;
+            /* Native Emojis */
+            filter: drop-shadow(0 4px 6px rgba(0, 0, 0, 0.1));
+            transition: transform 0.4s ease;
+        }
+
+        .service-card:hover .service-icon {
+            transform: scale(1.2) rotate(5deg);
+        }
+
+        .service-title {
+            font-size: 1.5rem;
+            font-weight: 700;
+            margin-bottom: 15px;
+            color: var(--text-header);
+        }
+
+        .service-desc {
+            color: var(--text-muted);
+            line-height: 1.6;
+            font-size: 1rem;
+        }
+
+        /* Mobile Responsiveness */
+        @media (max-width: 768px) {
+            .hero-title {
+                font-size: 3rem;
+            }
+
+            .hero-subtitle {
+                font-size: 1.2rem;
+            }
+
+            .action-btn {
+                padding: 15px 30px;
+                font-size: 1.2rem;
+                width: 90%;
+                max-width: 300px;
+            }
+
+            .services-grid {
+                gap: 20px;
+            }
+
+            .service-card {
+                padding: 30px 20px;
+                flex: 1 1 100%;
+                max-width: 100%;
+            }
+
+            nav {
+                padding: 15px 20px !important;
+                flex-direction: column;
+                gap: 15px;
+            }
+
+            nav>div {
+                width: 100%;
+                justify-content: center;
+            }
+        }
+
+        /* Footer Override for Themed Mode */
+        /* Contact Section Styling */
+        .contact-content {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+            gap: 60px;
+            max-width: 1200px;
+            margin: 0 auto;
+            align-items: flex-start;
+        }
+
+        .contact-info {
+            flex: 1 1 300px;
+            text-align: right;
+            padding-left: 40px;
+        }
+
+        .contact-item {
+            display: flex;
+            align-items: center;
+            gap: 20px;
+            padding: 20px;
+            background: var(--card-bg);
+            border: 1px solid var(--card-border);
+            border-radius: 16px;
+            margin-bottom: 20px;
+            transition: all 0.3s ease;
+        }
+
+        .contact-item:hover {
+            transform: translateX(-10px);
+            border-color: var(--accent);
+            box-shadow: 0 10px 20px var(--card-shadow);
+        }
+
+        .contact-icon-box {
+            width: 50px;
+            height: 50px;
+            background: linear-gradient(135deg, rgba(230, 57, 70, 0.1) 0%, rgba(255, 255, 255, 0) 100%);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.5rem;
+            color: var(--accent);
+        }
+
+        .contact-form-box {
+            flex: 1 1 450px;
+            background: var(--card-bg);
+            padding: 50px;
+            border-radius: 30px;
+            border: 1px solid var(--card-border);
+            box-shadow: 0 20px 40px var(--card-shadow);
+            backdrop-filter: blur(10px);
+        }
+
+        .contact-input-group {
+            margin-bottom: 20px;
+        }
+
+        .contact-input-group label {
+            display: block;
+            margin-bottom: 10px;
+            color: var(--text-muted);
+            font-weight: 600;
+        }
+
+        .contact-input {
+            width: 100%;
+            padding: 16px;
+            border-radius: 12px;
+            border: 1px solid var(--input-border);
+            background: var(--input-bg);
+            color: var(--input-text);
+            outline: none;
+            transition: all 0.3s ease;
+            font-size: 1rem;
+            font-family: inherit;
+        }
+
+        .contact-input:focus {
+            border-color: var(--accent);
+            box-shadow: 0 0 0 4px rgba(230, 57, 70, 0.1);
+        }
+
+        .contact-submit-btn {
+            width: 100%;
             border: none;
-            box-shadow: none;
+            cursor: pointer;
+            margin-top: 10px;
+        }
+
+        @media (max-width: 768px) {
+            .contact-content {
+                gap: 40px;
+            }
+
+            .contact-info {
+                padding-left: 0;
+            }
+        }
+
+        .site-footer {
+            background-color: var(--bg-primary) !important;
+            border-top: 1px solid var(--nav-border);
+            color: var(--text-muted) !important;
+        }
+
+        .site-footer h4 {
+            color: var(--text-header) !important;
+        }
+
+        .site-footer a {
+            color: var(--text-muted) !important;
+        }
+
+        .site-footer ul li {
+            margin-bottom: 8px;
+            /* Improve spacing on mobile */
         }
     </style>
+
 </head>
 
 <body>
 
     <nav
-        style="padding: 20px; position: absolute; top: 0; width: 100%; display: flex; justify-content: space-between; align-items: center;">
-        <div style="font-size: 24px;">🛡️ <span style="font-weight: bold;">Nextis</span></div>
-        <a href="/admin" style="color: #a0aec0; text-decoration: none; font-size: 14px;">כניסת מנהלים &rarr;</a>
+        style="padding: 24px 40px; position: absolute; z-index: 100; top: 0; width: 100%; display: flex; justify-content: space-between; align-items: center;">
+        <div style="display: flex; align-items: center; gap: 15px;">
+            <img src="{{ url_for('static', filename='logo.jpg') }}" alt="Nexsis Logo"
+                style="height: 60px; width: auto; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.3);">
+            <div
+                style="font-size: 28px; font-weight: bold; background: linear-gradient(to right, #e63946, var(--text-main)); -webkit-background-clip: text; -webkit-text-fill-color: transparent;">
+                Nexsis</div>
+        </div>
+        <a href="/login" class="action-btn"
+            style="padding: 12px 32px; font-size: 1.1rem; background: linear-gradient(135deg, #e63946, #c1121f); border: 2px solid rgba(255,255,255,0.3); box-shadow: 0 4px 15px rgba(230, 57, 70, 0.4); font-weight: 600;">
+            <span style="margin-left: 8px;">🔐</span>
+            התחברות
+        </a>
     </nav>
 
+    <!-- Hero Section -->
     <div class="hero-section">
-        <h1 class="hero-title">העסק שלך, חכם יותר.</h1>
-        <p class="hero-subtitle">מערכות קופה מתקדמות, ניהול מלאי וסליקת אשראי בפלטפורמה אחת פשוטה ועוצמתית.</p>
-
-        <a href="#" class="action-btn">התחל עכשיו</a>
+        <h1 class="hero-title">העסק שלך – חכם יותר</h1>
+        <p class="hero-subtitle">מערכות קופה מתקדמות, ניהול מלאי וסליקת אשראי בפלטפורמה אחת פשוטה ועוצמתית</p>
+        <a href="#services" class="action-btn">גלו את הפתרונות שלנו →</a>
 
         <!-- Services Belt Sticky Bottom of Hero -->
-        <div class="services-belt-wrapper">
-            <div class="services-ticker-container">
+        <div class="services-belt-wrapper"
+            style="position: absolute; bottom: 0; width: 100%; background: var(--belt-bg); backdrop-filter: blur(10px); border-top: 1px solid var(--nav-border);">
+            <div class="services-ticker-container" style="background: transparent; border: none; box-shadow: none;">
                 <div class="services-ticker">
                     <span class="service-item">💻 קופות ממוחשבות</span>
                     <span class="service-item">💳 סליקת אשראי</span>
                     <span class="service-item">📦 ניהול מלאי</span>
                     <span class="service-item">📱 תפריט דיגיטלי</span>
-                    <span class="service-item">🕒 שעון נוכחות</span>
+                    <span class="service-item">🕒 שעות נוכחות</span>
                     <span class="service-item">⚖️ משקלים</span>
                     <span class="service-item">📊 דוחות מתקדמים</span>
-                    <!-- Duplicate -->
                     <span class="service-item">💻 קופות ממוחשבות</span>
                     <span class="service-item">💳 סליקת אשראי</span>
                     <span class="service-item">📦 ניהול מלאי</span>
                     <span class="service-item">📱 תפריט דיגיטלי</span>
-                    <span class="service-item">🕒 שעון נוכחות</span>
-                    <span class="service-item">⚖️ משקלים</span>
-                    <span class="service-item">📊 דוחות מתקדמים</span>
-                    <!-- Triplicate for safety -->
-                    <span class="service-item">💻 קופות ממוחשבות</span>
-                    <span class="service-item">💳 סליקת אשראי</span>
-                    <span class="service-item">📦 ניהול מלאי</span>
-                    <span class="service-item">📱 תפריט דיגיטלי</span>
-                    <span class="service-item">🕒 שעון נוכחות</span>
+                    <span class="service-item">🕒 שעות נוכחות</span>
                 </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Services Grid ("Our Solutions") -->
+    <div id="services" class="client-section"
+        style="background: var(--bg-gradient-section); position: relative; overflow: hidden;">
+        <!-- Decorative Background Blur -->
+        <div
+            style="position: absolute; top: 0; right: 0; width: 400px; height: 400px; background: rgba(230, 57, 70, 0.05); filter: blur(100px); border-radius: 50%; pointer-events: none;">
+        </div>
+
+        <div style="text-align: center; max-width: 800px; margin: 0 auto 60px auto; position: relative; z-index: 1;">
+            <h2 class="section-title animate-on-scroll" style="margin-bottom: 20px; color: var(--accent);">הפתרונות שלנו
+            </h2>
+            <p class="animate-on-scroll" style="color: var(--text-muted); font-size: 1.2rem; line-height: 1.6;">
+                כל מה שהעסק שלך צריך כדי להתקדם, לגדול ולהצליח – במקום אחד.
+            </p>
+        </div>
+
+        <div class="services-grid" style="position: relative; z-index: 1;">
+            <div class="service-card animate-on-scroll">
+                <div class="service-icon">💻</div>
+                <h3 class="service-title">קופות ממוחשבות</h3>
+                <p class="service-desc">ממשק מהיר ואינטואיטיבי המותאם לכל סוגי העסקים. חוסך זמן יקר בכל מכירה.</p>
+            </div>
+            <div class="service-card animate-on-scroll">
+                <div class="service-icon">💳</div>
+                <h3 class="service-title">סליקת אשראי</h3>
+                <p class="service-desc">תמיכה מלאה בתקן EMV, תשלומים ללא מגע (NFC) וקישוריות מלאה לקופה.</p>
+            </div>
+            <div class="service-card animate-on-scroll">
+                <div class="service-icon">📦</div>
+                <h3 class="service-title">ניהול מלאי</h3>
+                <p class="service-desc">מעקב בזמן אמת אחר המוצרים, התראות על מלאי נמוך וניהול רכש חכם.</p>
+            </div>
+            <div class="service-card animate-on-scroll">
+                <div class="service-icon">📊</div>
+                <h3 class="service-title">דוחות ונתונים</h3>
+                <p class="service-desc">קבל החלטות מבוססות נתונים עם דוחות מפורטים על מכירות, רווחיות וביצועי עובדים.
+                </p>
+            </div>
+            <div class="service-card animate-on-scroll">
+                <div class="service-icon">⚖️</div>
+                <h3 class="service-title">משקלים וציוד</h3>
+                <p class="service-desc">שילוב מלא עם משקלים, סורקי ברקוד ומדפסות תרמיות לעבודה חלקה.</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Portfolio Section -->
+    <div id="portfolio" class="client-section" style="background: var(--bg-secondary);">
+        <h2 class="section-title animate-on-scroll">פרויקטים נבחרים</h2>
+        <div id="portfolioGrid" class="services-grid">
+            <!-- Dynamic Projects -->
+        </div>
+    </div>
+
+    <!-- Value Props ("Why Choose Us") -->
+    <div class="client-section" style="background: var(--bg-primary);">
+        <h2 class="section-title animate-on-scroll">למה לבחור ב-Nexsis?</h2>
+        <div class="features-container">
+            <div class="feature-item animate-on-scroll">
+                <div class="feature-icon-circle">🚀</div>
+                <h3 class="service-title">מהירות מקסימלית</h3>
+                <p class="service-desc">המערכת בנויה לעבודה תחת עומס, עם זמני תגובה מיידיים</p>
+            </div>
+            <div class="feature-item animate-on-scroll">
+                <div class="feature-icon-circle">✨</div>
+                <h3 class="service-title">פשטות ונוחות</h3>
+                <p class="service-desc">ממשק משתמש שכל עובד יכול ללמוד תוך דקות ספורות</p>
+            </div>
+            <div class="feature-item animate-on-scroll">
+                <div class="feature-icon-circle">☁️</div>
+                <h3 class="service-title">גיבוי בענן</h3>
+                <p class="service-desc">הנתונים שלך בטוחים ומגובים תמיד, עם אפשרות לעבודה גם ללא אינטרנט</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Stats Counter -->
+    <div class="stats-section animate-on-scroll" style="padding: 60px 20px; background: var(--bg-secondary);">
+        <div class="stats-grid">
+            <div class="stat-item">
+                <div style="font-size: 2.5rem; margin-bottom: 15px;">👥</div>
+                <div class="stat-number" data-target="1000">0</div>
+                <div class="stat-label">לקוחות מרוצים</div>
+            </div>
+            <div class="stat-item">
+                <div style="font-size: 2.5rem; margin-bottom: 15px;">🏙️</div>
+                <div class="stat-number" data-target="100+">0</div>
+                <div class="stat-label">ערים </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Contact Section -->
+    <div id="contact" class="client-section" style="background: var(--bg-gradient-hero);">
+        <h2 class="section-title animate-on-scroll">צור קשר</h2>
+        <div class="contact-content">
+            <!-- Contact Info -->
+            <div class="contact-info animate-on-scroll">
+                <h3 style="font-size: 2rem; margin-bottom: 20px; color: var(--text-header);">בואו נדבר תכלס</h3>
+                <p style="color: var(--text-muted); margin-bottom: 30px; font-size: 1.1rem; line-height: 1.6;">
+                    הצוות שלנו זמין עבורך לכל שאלה, שיחת ייעוץ או הדגמה של המערכת. השאירו פרטים ונחזור אליכם בהקדם
+                </p>
+
+                <div class="contact-item">
+                    <div class="contact-icon-box">📞</div>
+                    <div>
+                        <div style="font-weight: bold; font-size: 1.1rem; color: var(--text-header);">טלפון</div>
+                        <div style="color: var(--text-muted);">050-1234567</div>
+                    </div>
+                </div>
+
+                <div class="contact-item">
+                    <div class="contact-icon-box">📧</div>
+                    <div>
+                        <div style="font-weight: bold; font-size: 1.1rem; color: var(--text-header);">אימייל</div>
+                        <div style="color: var(--text-muted);">support@nextis.co.il</div>
+                    </div>
+                </div>
+
+                <div class="contact-item">
+                    <div class="contact-icon-box">📍</div>
+                    <div>
+                        <div style="font-weight: bold; font-size: 1.1rem; color: var(--text-header);">כתובת</div>
+                        <div style="color: var(--text-muted);">רחוב ההייטק 10, תל אביב</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Contact Form -->
+            <div class="contact-form-box animate-on-scroll">
+                <form>
+                    <div class="contact-input-group">
+                        <label>שם מלא</label>
+                        <input type="text" placeholder="ישראל ישראלי" class="contact-input">
+                    </div>
+                    <div class="contact-input-group">
+                        <label>מספר טלפון</label>
+                        <input type="tel" placeholder="050-0000000" class="contact-input">
+                    </div>
+                    <div class="contact-input-group">
+                        <label>הודעה</label>
+                        <textarea rows="4" placeholder="היי, אשמח לשמוע פרטים על..." class="contact-input"></textarea>
+                    </div>
+                    <button type="button" onclick="alert('תודה! פנייתך התקבלה בהצלחה')"
+                        class="action-btn contact-submit-btn">
+                        📤 שליחת פנייה
+                    </button>
+                </form>
             </div>
         </div>
     </div>
 
     <!-- Reviews Section -->
     <div class="reviews-section"
-        style="background: linear-gradient(180deg, #1a1d29 0%, #171b2d 100%); padding: 80px 20px; position: relative; overflow: hidden;">
+        style="background: var(--bg-gradient-section); padding: 80px 20px; position: relative; overflow: hidden;">
         <!-- Background Elements -->
         <div
-            style="position: absolute; top: -100px; left: -100px; width: 400px; height: 400px; background: rgba(230, 57, 70, 0.1); border-radius: 50%; blur(100px); filter: blur(80px); pointer-events: none;">
+            style="position: absolute; top: -100px; left: -100px; width: 400px; height: 400px; background: rgba(230, 57, 70, 0.1); border-radius: 50%; filter: blur(80px); pointer-events: none;">
         </div>
 
-        <h2
-            style="text-align: center; margin-bottom: 50px; font-size: 2.5rem; font-weight: 800; background: linear-gradient(135deg, #fff 0%, #cbd5e0 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent;">
-            מה הלקוחות אומרים עלינו</h2>
+        <h2 class="section-title">מה הלקוחות אומרים עלינו</h2>
 
         <!-- Scrolling Container -->
-        <div class="reviews-container" style="
-            display: flex; 
-            gap: 24px; 
-            overflow-x: auto; 
-            padding: 20px 40px; 
-            scroll-behavior: smooth; 
-            -webkit-overflow-scrolling: touch; 
-            scrollbar-width: none; /* Hide scrollbar Firefox */
-        ">
+        <div class="reviews-container"
+            style="display: flex; gap: 24px; overflow-x: auto; padding: 20px 40px; scroll-behavior: smooth; -webkit-overflow-scrolling: touch; scrollbar-width: none;">
             <!-- Reviews injected here -->
         </div>
 
-        <!-- Add Review Form (Glassmorphism) -->
+        <!-- Add Review Form -->
         <div
-            style="max-width: 500px; margin: 60px auto; background: rgba(255, 255, 255, 0.05); padding: 40px; border-radius: 20px; border: 1px solid rgba(255, 255, 255, 0.1); backdrop-filter: blur(10px); box-shadow: 0 20px 40px rgba(0,0,0,0.3);">
-            <h3 style="margin-bottom: 24px; text-align: center; font-size: 1.5rem; font-weight: 700;">הוסף את חוות דעתך
-            </h3>
+            style="max-width: 500px; margin: 60px auto; background: var(--card-bg); padding: 40px; border-radius: 20px; border: 1px solid var(--card-border); box-shadow: 0 20px 40px var(--card-shadow);">
+            <h3 style="margin-bottom: 24px; text-align: center; font-size: 1.5rem; font-weight: 700;">הוספת חוות
+                דעתך</h3>
             <form id="reviewForm" onsubmit="submitReview(event)">
                 <div style="margin-bottom: 20px;">
-                    <label style="display: block; margin-bottom: 8px; font-size: 0.9rem; color: #a0aec0;">שם מלא</label>
+                    <label style="display: block; margin-bottom: 8px; font-size: 0.9rem; color: var(--text-muted);">שם
+                        מלא</label>
                     <input type="text" id="reviewName" placeholder="איך לקרוא לך?"
-                        style="width: 100%; padding: 14px; border-radius: 12px; border: 1px solid rgba(255,255,255,0.1); background: rgba(0,0,0,0.2); color: white; transition: 0.3s; outline: none;">
+                        style="width: 100%; padding: 14px; border-radius: 12px; border: 1px solid var(--input-border); background: var(--input-bg); color: var(--input-text); transition: 0.3s; outline: none;">
                 </div>
                 <div style="margin-bottom: 20px;">
-                    <label style="display: block; margin-bottom: 8px; font-size: 0.9rem; color: #a0aec0;">דירוג
-                        שירות</label>
+                    <label
+                        style="display: block; margin-bottom: 8px; font-size: 0.9rem; color: var(--text-muted);">דירוג</label>
                     <div class="rating-select"
                         style="display: flex; gap: 10px; flex-direction: row-reverse; justify-content: center;">
                         <input type="radio" name="rating" value="5" id="star5" checked style="display:none"><label
-                            for="star5" style="cursor: pointer; font-size: 24px; transition: 0.2s;">⭐</label>
+                            for="star5" style="cursor: pointer; font-size: 24px;">⭐</label>
                         <input type="radio" name="rating" value="4" id="star4" style="display:none"><label for="star4"
-                            style="cursor: pointer; font-size: 24px; transition: 0.2s;">⭐</label>
+                            style="cursor: pointer; font-size: 24px;">⭐</label>
                         <input type="radio" name="rating" value="3" id="star3" style="display:none"><label for="star3"
-                            style="cursor: pointer; font-size: 24px; transition: 0.2s;">⭐</label>
+                            style="cursor: pointer; font-size: 24px;">⭐</label>
                         <input type="radio" name="rating" value="2" id="star2" style="display:none"><label for="star2"
-                            style="cursor: pointer; font-size: 24px; transition: 0.2s;">⭐</label>
+                            style="cursor: pointer; font-size: 24px;">⭐</label>
                         <input type="radio" name="rating" value="1" id="star1" style="display:none"><label for="star1"
-                            style="cursor: pointer; font-size: 24px; transition: 0.2s;">⭐</label>
+                            style="cursor: pointer; font-size: 24px;">⭐</label>
                     </div>
                 </div>
                 <div style="margin-bottom: 24px;">
-                    <label style="display: block; margin-bottom: 8px; font-size: 0.9rem; color: #a0aec0;">הדעה
+                    <label style="display: block; margin-bottom: 8px; font-size: 0.9rem; color: var(--text-muted);">הדעה
                         שלך</label>
                     <textarea id="reviewComment" rows="3" required placeholder="כתוב כאן..."
-                        style="width: 100%; padding: 14px; border-radius: 12px; border: 1px solid rgba(255,255,255,0.1); background: rgba(0,0,0,0.2); color: white; transition: 0.3s; outline: none;"></textarea>
+                        style="width: 100%; padding: 14px; border-radius: 12px; border: 1px solid var(--input-border); background: var(--input-bg); color: var(--input-text); transition: 0.3s; outline: none;"></textarea>
                 </div>
-                <button type="submit" class="action-btn"
-                    style="width: 100%; font-size: 1.1rem; cursor: pointer; border: none;">פרסם ביקורת</button>
+                <button type="submit" class="action-btn" style="width: 100%; font-size: 1.1rem;">✅ פרסום
+                    הביקורת</button>
             </form>
         </div>
     </div>
 
+    <!-- Footer -->
+    <footer class="site-footer">
+        <div class="footer-content">
+            <div class="footer-col">
+                <h4>Nextis</h4>
+                <p style="color: #a0aec0; max-width: 200px; line-height: 1.6;">הפתרון המוביל בישראל לניהול נקודות
+                    מכירה – חכם, מהיר ומאובטח</p>
+            </div>
+            <div class="footer-col">
+                <h4>קישורים מהירים</h4>
+                <ul>
+                    <li><a href="#services">פתרונות</a></li>
+                    <li><a href="#">אודות</a></li>
+                    <li><a href="#">קריירה</a></li>
+                    <li><a href="/login">התחברות</a></li>
+                </ul>
+            </div>
+            <div class="footer-col">
+                <h4>צור קשר</h4>
+                <ul>
+                    <li>📞 050-1234567</li>
+                    <li>📧 support@nextis.co.il</li>
+                    <li>📍 תל אביב, ישראל</li>
+                </ul>
+            </div>
+        </div>
+        <div
+            style="border-top: 1px solid var(--nav-border); padding-top: 20px; color: var(--text-muted); font-size: 0.9rem;">
+            &copy; 2026 Nexsis POS. כל הזכויות שמורות
+        </div>
+    </footer>
+
+    <button id="themeToggle" class="theme-toggle-btn" aria-label="Toggle Theme">
+        🌙
+    </button>
+
     <script>
+        // Theme Toggle Logic
+        const themeBtn = document.getElementById('themeToggle');
+        const htmlElement = document.documentElement;
+
+        // Check Saved Theme
+        const savedTheme = localStorage.getItem('theme') || 'light';
+        if (savedTheme === 'dark') {
+            htmlElement.setAttribute('data-theme', 'dark');
+            themeBtn.innerText = '☀️';
+        }
+
+        themeBtn.addEventListener('click', () => {
+            const currentTheme = htmlElement.getAttribute('data-theme');
+            const newTheme = currentTheme === 'dark' ? 'light' : 'dark';
+
+            if (newTheme === 'dark') {
+                htmlElement.setAttribute('data-theme', 'dark');
+                themeBtn.innerText = '☀️';
+            } else {
+                htmlElement.removeAttribute('data-theme');
+                themeBtn.innerText = '🌙';
+            }
+            localStorage.setItem('theme', newTheme);
+        });
+
+        // Animations on Scroll
+        const observer = new IntersectionObserver((entries) => {
+            entries.forEach(entry => {
+                if (entry.isIntersecting) {
+                    entry.target.classList.add('visible');
+
+                    // Trigger Counter Animation if it's the stats section
+                    if (entry.target.classList.contains('stats-section')) {
+                        startCounters();
+                    }
+                }
+            });
+        }, { threshold: 0.1 });
+
+        document.querySelectorAll('.animate-on-scroll').forEach(el => observer.observe(el));
+        observer.observe(document.querySelector('.stats-section'));
+
+        function startCounters() {
+            document.querySelectorAll('.stat-number').forEach(counter => {
+                const rawTarget = counter.getAttribute('data-target');
+                const target = parseInt(rawTarget.replace(/\D/g, '')); // Extract number
+                const suffix = rawTarget.replace(/[0-9]/g, ''); // Extract suffix (e.g. +)
+
+                const updateCount = () => {
+                    const count = +counter.innerText.replace(/\D/g, '');
+                    const inc = Math.max(1, Math.ceil(target / 100)); // Ensure at least 1
+
+                    if (count < target) {
+                        counter.innerText = (count + inc) + suffix;
+                        setTimeout(updateCount, 20);
+                    } else {
+                        counter.innerText = target + suffix;
+                    }
+                };
+                updateCount();
+            });
+        }
+
+        // Reviews Logic
         async function loadReviews() {
             try {
                 const response = await fetch('/api/reviews');
@@ -209,29 +792,28 @@
                     card.style.cssText = `
                         min-width: 320px;
                         max-width: 320px;
-                        background: rgba(30, 35, 48, 0.6);
-                        backdrop-filter: blur(12px);
+                        background: var(--card-bg);
                         padding: 24px;
                         border-radius: 16px;
-                        border: 1px solid rgba(255, 255, 255, 0.08);
+                        border: 1px solid var(--card-border);
                         display: flex;
                         flex-direction: column;
                         transition: transform 0.3s ease;
-                        box-shadow: 0 4px 20px rgba(0,0,0,0.2);
+                        box-shadow: 0 4px 20px var(--card-shadow);
                     `;
                     card.onmouseover = () => card.style.transform = 'translateY(-5px)';
                     card.onmouseout = () => card.style.transform = 'translateY(0)';
 
                     card.innerHTML = `
                         <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 16px;">
-                            <div style="width: 40px; height: 40px; background: linear-gradient(135deg, #e63946, #c1121f); border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: bold; font-size: 1.1rem;">${avatarLetter}</div>
+                            <div style="width: 40px; height: 40px; background: linear-gradient(135deg, #e63946, #c1121f); border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: bold; font-size: 1.1rem; color: white;">${avatarLetter}</div>
                             <div>
-                                <div style="font-weight: 700; font-size: 1rem;">${r.username}</div>
+                                <div style="font-weight: 700; font-size: 1rem; color: var(--text-main);">${r.username}</div>
                                 <div style="color: #ffd700; font-size: 0.9rem;">${'⭐'.repeat(r.rating)}</div>
                             </div>
                         </div>
-                        <p style="color: #cbd5e0; line-height: 1.6; font-size: 0.95rem; flex: 1;">"${r.comment}"</p>
-                        <div style="margin-top: 16px; font-size: 0.8rem; color: #718096; text-align: left;">${new Date(r.created_at || Date.now()).toLocaleDateString('he-IL')}</div>
+                        <p style="color: var(--text-muted); line-height: 1.6; font-size: 0.95rem; flex: 1;">"${r.comment}"</p>
+                        <div style="margin-top: 16px; font-size: 0.8rem; color: var(--text-muted); text-align: left;">${new Date(r.created_at || Date.now()).toLocaleDateString('he-IL')}</div>
                     `;
                     container.appendChild(card);
                 });
@@ -262,17 +844,111 @@
                 });
                 document.getElementById('reviewForm').reset();
                 loadReviews();
-                // Scroll to start
                 document.querySelector('.reviews-container').scrollTo({ left: 0, behavior: 'smooth' });
             } catch (e) {
-                alert('שגיאה בשליחה');
+                alert('שגיאה בשליחת הביקורת');
             } finally {
                 btn.textContent = originalText;
                 btn.disabled = false;
             }
         }
 
+        // Portfolio Logic
+        async function loadPortfolio() {
+            try {
+                const response = await fetch('/api/projects');
+                const projects = await response.json();
+                const container = document.getElementById('portfolioGrid');
+                container.innerHTML = '';
+
+                if (projects.length === 0) {
+                    container.innerHTML = '<p style="grid-column: 1/-1; text-align:center; padding: 40px; color:#718096">בקרוב...</p>';
+                    return;
+                }
+
+                projects.forEach(p => {
+                    const card = document.createElement('div');
+                    card.className = 'service-card animate-on-scroll';
+                    card.style.display = 'flex';
+                    card.style.flexDirection = 'column';
+
+                    let imageGallery = '';
+                    if (p.images && p.images.length > 0) {
+                        imageGallery = `
+                            <div class="project-card-image" style="position: relative; overflow: hidden; border-radius: 12px; height: 250px;">
+                                <div class="project-gallery" style="display: flex; height: 100%; transition: transform 0.4s cubic-bezier(0.4, 0, 0.2, 1);">
+                                    ${p.images.map(img => `
+                                        <div style="min-width: 100%; height: 100%; flex-shrink: 0;">
+                                            <img src="${img.image_url}" style="width: 100%; height: 100%; object-fit: cover;">
+                                        </div>
+                                    `).join('')}
+                                </div>
+                                ${p.images.length > 1 ? `
+                                    <div class="gallery-nav" style="position: absolute; width: 100%; height: 100%; top: 0; left: 0; pointer-events: none; display: flex; justify-content: space-between; align-items: center; padding: 0 10px;">
+                                        <button class="nav-btn prev" style="pointer-events: auto; background: rgba(0,0,0,0.5); border: none; color: white; width: 30px; height: 30px; border-radius: 50%; cursor: pointer; backdrop-filter: blur(4px); transition: 0.3s; display: flex; align-items: center; justify-content: center;">❮</button>
+                                        <button class="nav-btn next" style="pointer-events: auto; background: rgba(0,0,0,0.5); border: none; color: white; width: 30px; height: 30px; border-radius: 50%; cursor: pointer; backdrop-filter: blur(4px); transition: 0.3s; display: flex; align-items: center; justify-content: center;">❯</button>
+                                    </div>
+                                    <div class="gallery-counter" style="position: absolute; bottom: 15px; left: 50%; transform: translateX(-50%); background: rgba(0,0,0,0.6); color: white; padding: 4px 12px; border-radius: 20px; font-size: 0.75rem; backdrop-filter: blur(4px); font-weight: 600;">
+                                        1 / ${p.images.length}
+                                    </div>
+                                ` : ''}
+                            </div>
+                        `;
+                    } else {
+                        imageGallery = `<div style="height: 250px; background: rgba(255,255,255,0.05); border-radius: 12px; display: flex; align-items: center; justify-content: center; color: #4a5568;">אין תמונה</div>`;
+                    }
+
+                    card.innerHTML = `
+                        ${imageGallery}
+                        <div style="padding-top: 20px; flex: 1; display: flex; flex-direction: column;">
+                            <h3 class="service-title" style="margin-top: 0; margin-bottom: 10px;">${p.title}</h3>
+                            <p class="service-desc" style="margin-bottom: 0; color: #a0aec0; line-height: 1.5; font-size: 0.95rem;">${p.description}</p>
+                        </div>
+                    `;
+
+                    // Add navigation logic
+                    if (p.images && p.images.length > 1) {
+                        const gallery = card.querySelector('.project-gallery');
+                        const counter = card.querySelector('.gallery-counter');
+                        const nextBtn = card.querySelector('.next');
+                        const prevBtn = card.querySelector('.prev');
+                        let currentIndex = 0;
+
+                        const updateGallery = () => {
+                            // Since we are in RTL, standard translateX might be tricky with flex-scroll
+                            // But here we use transform on the container, which is fine.
+                            // In RTL, positive translateX moves right, but our images are laid out RTL?
+                            // Let's check: the container is dir="rtl".
+                            // Actually, if we use flex, they might be laid out right-to-left.
+                            // Let's simplify and use a style that works across both.
+                            gallery.style.transform = `translateX(${currentIndex * 100}%)`;
+                            counter.textContent = `${currentIndex + 1} / ${p.images.length}`;
+                        };
+
+                        nextBtn.addEventListener('click', (e) => {
+                            e.stopPropagation();
+                            currentIndex = (currentIndex + 1) % p.images.length;
+                            updateGallery();
+                        });
+
+                        prevBtn.addEventListener('click', (e) => {
+                            e.stopPropagation();
+                            currentIndex = (currentIndex - 1 + p.images.length) % p.images.length;
+                            updateGallery();
+                        });
+                    }
+
+                    container.appendChild(card);
+                    observer.observe(card);
+                });
+            } catch (e) {
+                console.error('Error loading portfolio:', e);
+            }
+        }
+
+
         loadReviews();
+        loadPortfolio();
     </script>
 </body>
 

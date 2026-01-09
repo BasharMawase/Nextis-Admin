@@ -10,8 +10,10 @@ from werkzeug.security import generate_password_hash, check_password_hash
 app = Flask(__name__)
 app.secret_key = 'nextis_secret_key_change_in_production'
 app.config['UPLOAD_FOLDER'] = 'uploads'
+app.config['PORTFOLIO_FOLDER'] = os.path.join('static', 'portfolio_uploads')
 app.config['DB_NAME'] = 'nexsis.db'
 os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
+os.makedirs(app.config['PORTFOLIO_FOLDER'], exist_ok=True)
 
 def get_db_connection():
     conn = sqlite3.connect(app.config['DB_NAME'])
@@ -44,6 +46,20 @@ def init_db():
             rating INTEGER,
             comment TEXT,
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        );
+        CREATE TABLE IF NOT EXISTS projects (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            title TEXT,
+            description TEXT,
+            image_url TEXT,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        );
+        CREATE TABLE IF NOT EXISTS project_images (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            project_id INTEGER,
+            image_url TEXT,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (project_id) REFERENCES projects (id) ON DELETE CASCADE
         );
     ''')
     conn.commit()
@@ -249,6 +265,139 @@ def handle_reviews():
     conn.close()
     return jsonify([dict(r) for r in reviews])
 
+@app.route('/api/projects', methods=['GET', 'POST'])
+def handle_projects():
+    conn = get_db_connection()
+    if request.method == 'POST':
+        if 'role' not in session or session['role'] != 'admin':
+            return jsonify({'error': 'Unauthorized'}), 403
+            
+        title = request.form.get('title')
+        description = request.form.get('description')
+        image_files = request.files.getlist('image')
+        
+        if not title or not description or not image_files:
+            return jsonify({'error': 'Missing data'}), 400
+            
+        # Create project
+        cursor = conn.execute('INSERT INTO projects (title, description, image_url) VALUES (?, ?, ?)',
+                     (title, description, ""))
+        project_id = cursor.lastrowid
+        
+        first_image_url = ""
+        for i, image_file in enumerate(image_files):
+            if not image_file: continue
+            filename = secure_filename(f"{uuid.uuid4()}_{image_file.filename}")
+            image_path = os.path.join(app.config['PORTFOLIO_FOLDER'], filename)
+            image_file.save(image_path)
+            
+            # relative path for web access
+            image_url = f"/static/portfolio_uploads/{filename}"
+            if i == 0: first_image_url = image_url
+            
+            conn.execute('INSERT INTO project_images (project_id, image_url) VALUES (?, ?)',
+                         (project_id, image_url))
+        
+        # Update project with cover image
+        conn.execute('UPDATE projects SET image_url = ? WHERE id = ?', (first_image_url, project_id))
+        
+        conn.commit()
+        conn.close()
+        return jsonify({'success': True})
+    
+    projects_rows = conn.execute('SELECT * FROM projects ORDER BY id DESC').fetchall()
+    projects = []
+    for p in projects_rows:
+        project = dict(p)
+        images = conn.execute('SELECT * FROM project_images WHERE project_id = ?', (project['id'],)).fetchall()
+        project['images'] = [dict(img) for img in images]
+        projects.append(project)
+        
+    conn.close()
+    return jsonify(projects)
+
+@app.route('/api/projects/<int:project_id>', methods=['DELETE'])
+def delete_project(project_id):
+    if 'role' not in session or session['role'] != 'admin':
+        return jsonify({'error': 'Unauthorized'}), 403
+        
+    conn = get_db_connection()
+    images = conn.execute('SELECT image_url FROM project_images WHERE project_id = ?', (project_id,)).fetchall()
+    
+    for img in images:
+        try:
+            filename = img['image_url'].split('/')[-1]
+            os.remove(os.path.join(app.config['PORTFOLIO_FOLDER'], filename))
+        except:
+            pass
+            
+    conn.execute('DELETE FROM project_images WHERE project_id = ?', (project_id,))
+    conn.execute('DELETE FROM projects WHERE id = ?', (project_id,))
+    conn.commit()
+    conn.close()
+    return jsonify({'success': True})
+
+@app.route('/api/projects/<int:project_id>', methods=['POST'])
+def update_project(project_id):
+    if 'role' not in session or session['role'] != 'admin':
+        return jsonify({'error': 'Unauthorized'}), 403
+        
+    title = request.form.get('title')
+    description = request.form.get('description')
+    image_files = request.files.getlist('image')
+    
+    conn = get_db_connection()
+    
+    if title and description:
+        conn.execute('UPDATE projects SET title = ?, description = ? WHERE id = ?', (title, description, project_id))
+    
+    if image_files:
+        for image_file in image_files:
+            if not image_file or image_file.filename == '': continue
+            filename = secure_filename(f"{uuid.uuid4()}_{image_file.filename}")
+            image_path = os.path.join(app.config['PORTFOLIO_FOLDER'], filename)
+            image_file.save(image_path)
+            
+            image_url = f"/static/portfolio_uploads/{filename}"
+            conn.execute('INSERT INTO project_images (project_id, image_url) VALUES (?, ?)', (project_id, image_url))
+            
+            # If the project had no cover image, set this one as cover
+            project = conn.execute('SELECT image_url FROM projects WHERE id = ?', (project_id,)).fetchone()
+            if not project['image_url']:
+                conn.execute('UPDATE projects SET image_url = ? WHERE id = ?', (image_url, project_id))
+
+    conn.commit()
+    conn.close()
+    return jsonify({'success': True})
+
+@app.route('/api/portfolio/images/<int:image_id>', methods=['DELETE'])
+def delete_portfolio_image(image_id):
+    if 'role' not in session or session['role'] != 'admin':
+        return jsonify({'error': 'Unauthorized'}), 403
+        
+    conn = get_db_connection()
+    img = conn.execute('SELECT * FROM project_images WHERE id = ?', (image_id,)).fetchone()
+    if img:
+        try:
+            filename = img['image_url'].split('/')[-1]
+            os.remove(os.path.join(app.config['PORTFOLIO_FOLDER'], filename))
+        except:
+            pass
+        
+        project_id = img['project_id']
+        conn.execute('DELETE FROM project_images WHERE id = ?', (image_id,))
+        
+        # Update project cover if this was the cover
+        project = conn.execute('SELECT * FROM projects WHERE id = ?', (project_id,)).fetchone()
+        if project and project['image_url'] == img['image_url']:
+            next_img = conn.execute('SELECT image_url FROM project_images WHERE project_id = ? LIMIT 1', (project_id,)).fetchone()
+            new_cover = next_img['image_url'] if next_img else ""
+            conn.execute('UPDATE projects SET image_url = ? WHERE id = ?', (new_cover, project_id))
+            
+        conn.commit()
+    conn.close()
+    return jsonify({'success': True})
+
 @app.route('/')
 def client_home():
     return render_template('client.html')
@@ -315,6 +464,50 @@ def add_client():
     
     return jsonify({'success': True})
 
+@app.route('/api/clients/update/<int:client_id>', methods=['POST'])
+def update_client(client_id):
+    if 'role' not in session or session['role'] != 'admin':
+        return jsonify({'error': 'Unauthorized'}), 403
+    
+    data = request.json
+    if not data:
+        return jsonify({'error': 'No data provided'}), 400
+    
+    business_name = data.get('business_name')
+    location = normalize_city(data.get('location', ''))
+    phone = data.get('phone', 'אין')
+    anydesk = data.get('anydesk', 'אין')
+    
+    # Update the core fields
+    conn = get_db_connection()
+    try:
+        # Also update extra_data JSON to keep it in sync if needed
+        # We'll merge with existing extra_data
+        client = conn.execute('SELECT extra_data FROM clients WHERE id = ?', (client_id,)).fetchone()
+        extra = {}
+        if client and client['extra_data']:
+            try:
+                extra = json.loads(client['extra_data'])
+            except:
+                pass
+        
+        # Update extra dict with new values
+        extra.update(data)
+        extra_json = json.dumps(extra, ensure_ascii=False)
+        
+        conn.execute('''
+            UPDATE clients 
+            SET business_name = ?, location = ?, phone = ?, anydesk = ?, extra_data = ?
+            WHERE id = ?
+        ''', (business_name, location, phone, anydesk, extra_json, client_id))
+        conn.commit()
+        return jsonify({'success': True})
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+    finally:
+        conn.close()
+
+
 @app.route('/api/search')
 def search():
     query = request.args.get('q', '').strip()
@@ -335,15 +528,36 @@ def get_clients_by_location():
     if not location:
         clients = []
     else:
-        clients = conn.execute("SELECT * FROM clients WHERE location = ?", (location,)).fetchall()
+        rows = conn.execute("SELECT * FROM clients WHERE location = ?", (location,)).fetchall()
+        clients = []
+        for row in rows:
+            client = {}
+            # Start with base fields
+            for key in row.keys():
+                if key not in ['extra_data', 'created_at']:
+                    client[key] = row[key]
+            
+            # Merge ALL extra_data fields
+            if row['extra_data']:
+                try:
+                    extra = json.loads(row['extra_data'])
+                    if isinstance(extra, dict):
+                        for key, value in extra.items():
+                            if key not in ['id', 'created_at', 'extra_data']:
+                                client[key] = value
+                except Exception as e:
+                    print(f"Error parsing extra_data: {e}")
+            
+            clients.append(client)
+    
     conn.close()
     
-    return jsonify([dict(row) for row in clients])
+    return jsonify(clients)
 
 @app.route('/api/clients/all')
 def get_all_clients():
     page = int(request.args.get('page', 1))
-    per_page = int(request.args.get('limit', 50))
+    per_page = int(request.args.get('limit', 100))  # Increased limit for better viewing
     offset = (page - 1) * per_page
     
     conn = get_db_connection()
@@ -353,15 +567,25 @@ def get_all_clients():
         
         results = []
         for row in rows:
-            client = dict(row)
-            # Merge extra_data if available
-            if client.get('extra_data'):
+            client = {}
+            # Start with base fields
+            for key in row.keys():
+                if key not in ['extra_data', 'created_at']:  # Exclude these from display
+                    client[key] = row[key]
+            
+            # Merge ALL extra_data fields
+            if row['extra_data']:
                 try:
-                    extra = json.loads(client['extra_data'])
+                    extra = json.loads(row['extra_data'])
                     if isinstance(extra, dict):
-                        client.update(extra)
-                except:
-                    pass
+                        # Merge all extra fields, overwriting base fields if they exist
+                        for key, value in extra.items():
+                            # Skip empty or redundant fields
+                            if key not in ['id', 'created_at', 'extra_data']:
+                                client[key] = value
+                except Exception as e:
+                    print(f"Error parsing extra_data for client {row['id']}: {e}")
+            
             results.append(client)
             
         return jsonify({
@@ -407,4 +631,4 @@ def analytics():
     return jsonify(get_stats())
 
 if __name__ == '__main__':
-    app.run(debug=True, port=5000)
+    app.run(debug=True, port=5001)
