@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Nexsis - פתרונות קופה חכמים</title>
+    <title>Nextis - פתרונות קופה חכמים</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='css/dashboard.css') }}">
     <style>
         /* --- THEME VARIABLES --- */
@@ -17,6 +17,7 @@
 
             --text-main: #2d3748;
             --text-header: #000000;
+            --header-gradient: linear-gradient(135deg, #1a202c 0%, #4a5568 100%);
             --text-muted: #718096;
 
             --card-bg: rgba(255, 255, 255, 0.8);
@@ -37,7 +38,8 @@
             --bg-gradient-section: linear-gradient(180deg, #171b2d 0%, #1a1d29 100%);
 
             --text-main: #ffffff;
-            --text-header: #ffffff;
+            --text-header: #a0aec0;
+            --header-gradient: linear-gradient(135deg, #a0aec0 0%, #718096 100%);
             --text-muted: #a0aec0;
 
             --card-bg: rgba(255, 255, 255, 0.03);
@@ -65,6 +67,10 @@
 
         .section-title {
             color: var(--text-header) !important;
+            background: var(--header-gradient) !important;
+            -webkit-background-clip: text !important;
+            -webkit-text-fill-color: transparent !important;
+            background-clip: text !important;
         }
 
         .hero-section {
@@ -92,8 +98,9 @@
         }
 
         [data-theme="dark"] .hero-title {
-            background: linear-gradient(135deg, #ffffff 0%, #a0aec0 100%);
+            background: linear-gradient(135deg, #a0aec0 0%, #718096 100%);
             -webkit-background-clip: text;
+            background-clip: text;
             -webkit-text-fill-color: transparent;
         }
 
@@ -423,11 +430,11 @@
     <nav
         style="padding: 24px 40px; position: absolute; z-index: 100; top: 0; width: 100%; display: flex; justify-content: space-between; align-items: center;">
         <div style="display: flex; align-items: center; gap: 15px;">
-            <img src="{{ url_for('static', filename='logo.jpg') }}" alt="Nexsis Logo"
+            <img src="{{ url_for('static', filename='logo.jpg') }}" alt="Nextis Logo"
                 style="height: 60px; width: auto; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.3);">
             <div
-                style="font-size: 28px; font-weight: bold; background: linear-gradient(to right, #e63946, var(--text-main)); -webkit-background-clip: text; -webkit-text-fill-color: transparent;">
-                Nexsis</div>
+                style="font-size: 28px; font-weight: bold; background: linear-gradient(to right, #e63946, var(--text-main)); -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent;">
+                Nextis</div>
         </div>
         <a href="/login" class="action-btn"
             style="padding: 12px 32px; font-size: 1.1rem; background: linear-gradient(135deg, #e63946, #c1121f); border: 2px solid rgba(255,255,255,0.3); box-shadow: 0 4px 15px rgba(230, 57, 70, 0.4); font-weight: 600;">
@@ -520,7 +527,7 @@
 
     <!-- Value Props ("Why Choose Us") -->
     <div class="client-section" style="background: var(--bg-primary);">
-        <h2 class="section-title animate-on-scroll">למה לבחור ב-Nexsis?</h2>
+        <h2 class="section-title animate-on-scroll">למה לבחור ב-Nextis?</h2>
         <div class="features-container">
             <div class="feature-item animate-on-scroll">
                 <div class="feature-icon-circle">🚀</div>
@@ -564,14 +571,14 @@
             <div class="contact-info animate-on-scroll">
                 <h3 style="font-size: 2rem; margin-bottom: 20px; color: var(--text-header);">בואו נדבר תכלס</h3>
                 <p style="color: var(--text-muted); margin-bottom: 30px; font-size: 1.1rem; line-height: 1.6;">
-                    הצוות שלנו זמין עבורך לכל שאלה, שיחת ייעוץ או הדגמה של המערכת. השאירו פרטים ונחזור אליכם בהקדם
+                    הצוות שלנו זמין לכל שאלה, ייעוץ או הדגמה. השאירו פרטים וניצור איתכם קשר בהקדם.
                 </p>
 
                 <div class="contact-item">
                     <div class="contact-icon-box">📞</div>
                     <div>
                         <div style="font-weight: bold; font-size: 1.1rem; color: var(--text-header);">טלפון</div>
-                        <div style="color: var(--text-muted);">050-1234567</div>
+                        <div style="color: var(--text-muted);">050-9445186</div>
                     </div>
                 </div>
 
@@ -594,21 +601,21 @@
 
             <!-- Contact Form -->
             <div class="contact-form-box animate-on-scroll">
-                <form>
+                <form id="contactForm">
                     <div class="contact-input-group">
                         <label>שם מלא</label>
-                        <input type="text" placeholder="ישראל ישראלי" class="contact-input">
+                        <input type="text" id="contactName" placeholder="" class="contact-input">
                     </div>
                     <div class="contact-input-group">
                         <label>מספר טלפון</label>
-                        <input type="tel" placeholder="050-0000000" class="contact-input">
+                        <input type="tel" id="contactPhone" placeholder="050-0000000" class="contact-input">
                     </div>
                     <div class="contact-input-group">
                         <label>הודעה</label>
-                        <textarea rows="4" placeholder="היי, אשמח לשמוע פרטים על..." class="contact-input"></textarea>
+                        <textarea id="contactMessage" rows="4" placeholder="היי, אשמח לשמוע פרטים על..."
+                            class="contact-input"></textarea>
                     </div>
-                    <button type="button" onclick="alert('תודה! פנייתך התקבלה בהצלחה')"
-                        class="action-btn contact-submit-btn">
+                    <button type="button" onclick="submitContact()" class="action-btn contact-submit-btn">
                         📤 שליחת פנייה
                     </button>
                 </form>
@@ -701,7 +708,7 @@
         </div>
         <div
             style="border-top: 1px solid var(--nav-border); padding-top: 20px; color: var(--text-muted); font-size: 0.9rem;">
-            &copy; 2026 Nexsis POS. כל הזכויות שמורות
+            &copy; 2026 Nextis POS. כל הזכויות שמורות
         </div>
     </footer>
 
@@ -771,6 +778,35 @@
                 };
                 updateCount();
             });
+        }
+
+        async function submitContact() {
+            const name = document.getElementById('contactName').value;
+            const phone = document.getElementById('contactPhone').value;
+            const message = document.getElementById('contactMessage').value;
+
+            if (!name || !phone) {
+                alert('נא למלא שם וטלפון');
+                return;
+            }
+
+            try {
+                const res = await fetch('/api/contact', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ name, phone, message })
+                });
+
+                if (res.ok) {
+                    alert('תודה! פנייתך התקבלה בהצלחה');
+                    document.getElementById('contactForm').reset();
+                } else {
+                    alert('שגיאה בשליחת הפנייה');
+                }
+            } catch (e) {
+                console.error(e);
+                alert('שגיאה בתקשורת');
+            }
         }
 
         // Reviews Logic

@@ -1,9 +1,11 @@
-from flask import Flask, render_template, request, jsonify, session, redirect, url_for, flash
+from flask import Flask, render_template, request, jsonify, session, redirect, url_for, flash, Response, send_file
 import pandas as pd
 import os
 import sqlite3
 import json
 import uuid
+from datetime import datetime
+from io import BytesIO
 from werkzeug.utils import secure_filename
 from werkzeug.security import generate_password_hash, check_password_hash
 
@@ -11,7 +13,7 @@ app = Flask(__name__)
 app.secret_key = 'nextis_secret_key_change_in_production'
 app.config['UPLOAD_FOLDER'] = 'uploads'
 app.config['PORTFOLIO_FOLDER'] = os.path.join('static', 'portfolio_uploads')
-app.config['DB_NAME'] = 'nexsis.db'
+app.config['DB_NAME'] = 'nextis.db'
 os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
 os.makedirs(app.config['PORTFOLIO_FOLDER'], exist_ok=True)
 
@@ -60,6 +62,13 @@ def init_db():
             image_url TEXT,
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
             FOREIGN KEY (project_id) REFERENCES projects (id) ON DELETE CASCADE
+        );
+        CREATE TABLE IF NOT EXISTS contact_messages (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            name TEXT,
+            phone TEXT,
+            message TEXT,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         );
     ''')
     conn.commit()
@@ -221,10 +230,10 @@ def register():
         secret_code = request.form.get('secret_code', '')
         
         role = 'client'
-        if secret_code == 'Admin123':  # Simple admin code
+        if secret_code == 'Nx$!2026#Admin@Secure*Key':  # Complex admin code
             role = 'admin'
             
-        hashed_pw = generate_password_hash(password)
+        hashed_pw = generate_password_hash(password, method='pbkdf2:sha256')
         
         try:
             conn = get_db_connection()
@@ -442,6 +451,72 @@ def upload_file():
         'stats': get_stats()
     })
 
+@app.route('/api/files/list')
+def list_uploaded_files():
+    if 'role' not in session or session['role'] != 'admin':
+        return jsonify({'error': 'Unauthorized'}), 403
+    
+    try:
+        files = []
+        upload_folder = app.config['UPLOAD_FOLDER']
+        if os.path.exists(upload_folder):
+            for filename in os.listdir(upload_folder):
+                filepath = os.path.join(upload_folder, filename)
+                if os.path.isfile(filepath):
+                    stat = os.stat(filepath)
+                    files.append({
+                        'name': filename,
+                        'size': stat.st_size,
+                        'modified': datetime.fromtimestamp(stat.st_mtime).strftime('%Y-%m-%d %H:%M')
+                    })
+        
+        files.sort(key=lambda x: x['modified'], reverse=True)
+        return jsonify({'files': files})
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/files/delete', methods=['POST'])
+def delete_uploaded_file():
+    if 'role' not in session or session['role'] != 'admin':
+        return jsonify({'error': 'Unauthorized'}), 403
+    
+    data = request.get_json()
+    filename = data.get('filename')
+    
+    try:
+        if '..' in filename or filename.startswith('/'):
+            return jsonify({'error': 'Invalid filename'}), 400
+
+        upload_folder = app.config['UPLOAD_FOLDER']
+        filepath = os.path.join(upload_folder, filename)
+        abs_filepath = os.path.abspath(filepath)
+        abs_upload_folder = os.path.abspath(upload_folder)
+        
+        # Security Check
+        if not abs_filepath.startswith(abs_upload_folder):
+            return jsonify({'error': 'Invalid file path security check'}), 400
+        
+        # 1. Delete associated data from DB
+        conn = get_db_connection()
+        try:
+            conn.execute("DELETE FROM clients WHERE source_file = ?", (filename,))
+            conn.commit()
+        except Exception as db_e:
+            print(f"Error deleting from DB: {db_e}")
+            # Continue to delete file even if DB fail (or maybe not? prioritize cleanup)
+        finally:
+            conn.close()
+
+        # 2. Delete file from disk
+        if os.path.exists(filepath):
+            os.remove(filepath)
+            return jsonify({'success': True, 'message': f'File and data deleted'})
+        else:
+            return jsonify({'error': 'File not found'}), 404
+
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
 @app.route('/api/clients/add', methods=['POST'])
 def add_client():
     data = request.json
@@ -507,6 +582,96 @@ def update_client(client_id):
     finally:
         conn.close()
 
+@app.route('/api/clients/delete/<int:client_id>', methods=['POST', 'DELETE'])
+def delete_client(client_id):
+    if 'role' not in session or session['role'] != 'admin':
+        return jsonify({'error': 'Unauthorized'}), 403
+    
+    conn = get_db_connection()
+    try:
+        # Check if client exists
+        client = conn.execute("SELECT * FROM clients WHERE id = ?", (client_id,)).fetchone()
+        if not client:
+            return jsonify({'error': 'Client not found'}), 404
+        
+        # Delete the client
+        conn.execute("DELETE FROM clients WHERE id = ?", (client_id,))
+        conn.commit()
+        
+        return jsonify({'success': True, 'message': 'Client deleted successfully'})
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+    finally:
+        conn.close()
+
+@app.route('/api/clients/details/<int:client_id>')
+def get_client_details(client_id):
+    conn = get_db_connection()
+    try:
+        # Fetch the clicked client first to identify the business
+        targ_client = conn.execute("SELECT * FROM clients WHERE id = ?", (client_id,)).fetchone()
+        if not targ_client:
+            return jsonify({'error': 'Client not found'}), 404
+        
+        business_name = targ_client['business_name']
+        
+        # Now fetch ALL records for this business name to aggregate data
+        # Using case-insensitive match just in case
+        all_records = conn.execute("SELECT * FROM clients WHERE business_name = ? COLLATE NOCASE", (business_name,)).fetchall()
+        
+        merged_data = {}
+        source_files = set()
+        
+        # Iterate over all related records and merge data
+        for record in all_records:
+            # 1. Start with core fields from this record (in case extra_data is partial)
+            # 2. Parse extra_data
+            row_data = {}
+            if record['extra_data']:
+                try:
+                    row_data = json.loads(record['extra_data'])
+                except:
+                    pass
+            
+            # 3. If empty extra_data, fallback to core
+            if not row_data:
+                 for field in ['location', 'phone', 'anydesk']:
+                      val = record[field]
+                      if val: row_data[field] = val
+
+            # 4. Merge into main dict
+            merged_data.update(row_data)
+            
+            # 5. Collect source file
+            if record['source_file']:
+                source_files.add(record['source_file'])
+        
+        # Ensure business_name is consistently set
+        merged_data['business_name'] = business_name
+        
+        # Consolidate source files
+        if source_files:
+            merged_data['source_file'] = ', '.join(sorted(list(source_files)))
+        
+        # Use Pandas for display formatting
+        df = pd.DataFrame([merged_data])
+        
+        # Transpose
+        df_transposed = df.transpose().reset_index()
+        df_transposed.columns = ['Field', 'Value']
+        
+        df_transposed = df_transposed.fillna('')
+        
+        result = df_transposed.to_dict('records')
+        
+        return jsonify(result)
+        
+    except Exception as e:
+        print(f"Error in details: {e}")
+        return jsonify({'error': str(e)}), 500
+    finally:
+        conn.close()
+
 
 @app.route('/api/search')
 def search():
@@ -557,8 +722,11 @@ def get_clients_by_location():
 @app.route('/api/clients/all')
 def get_all_clients():
     page = int(request.args.get('page', 1))
-    per_page = int(request.args.get('limit', 100))  # Increased limit for better viewing
+    per_page = int(request.args.get('limit', 100))
     offset = (page - 1) * per_page
+    
+    # Check if admin wants to see all columns (expanded view)
+    expanded_view = request.args.get('expanded', 'false').lower() == 'true'
     
     conn = get_db_connection()
     try:
@@ -566,34 +734,50 @@ def get_all_clients():
         rows = conn.execute("SELECT * FROM clients ORDER BY id DESC LIMIT ? OFFSET ?", (per_page, offset)).fetchall()
         
         results = []
+        all_fields = set()  # To collect all unique field names
+        
         for row in rows:
-            client = {}
-            # Start with base fields
-            for key in row.keys():
-                if key not in ['extra_data', 'created_at']:  # Exclude these from display
-                    client[key] = row[key]
+            client = {
+                'id': row['id'],
+                'business_name': row['business_name'],
+                'location': row['location'],
+                'phone': row['phone'],
+                'anydesk': row['anydesk'],
+                'source_file': row['source_file'],
+                'created_at': row['created_at']
+            }
             
-            # Merge ALL extra_data fields
+            # Parse extra_data which contains ALL Excel columns
             if row['extra_data']:
                 try:
                     extra = json.loads(row['extra_data'])
                     if isinstance(extra, dict):
-                        # Merge all extra fields, overwriting base fields if they exist
-                        for key, value in extra.items():
-                            # Skip empty or redundant fields
-                            if key not in ['id', 'created_at', 'extra_data']:
+                        if expanded_view:
+                            # In expanded view, add ALL fields as top-level properties
+                            for key, value in extra.items():
                                 client[key] = value
+                                all_fields.add(key)
+                        else:
+                            # In compact view, keep extra_data as separate object
+                            client['extra_data'] = extra
                 except Exception as e:
                     print(f"Error parsing extra_data for client {row['id']}: {e}")
+                    client['extra_data'] = {}
             
             results.append(client)
             
-        return jsonify({
+        response = {
             'total': total,
             'page': page,
             'per_page': per_page,
             'data': results
-        })
+        }
+        
+        # If expanded view, also return all unique fields for table headers
+        if expanded_view:
+            response['all_fields'] = sorted(list(all_fields))
+            
+        return jsonify(response)
     finally:
         conn.close()
 
@@ -629,6 +813,199 @@ def get_stats():
 @app.route('/api/analytics')
 def analytics():
     return jsonify(get_stats())
+
+@app.route('/api/clients/full/<int:client_id>')
+def get_client_full_details(client_id):
+    """Get complete client data with ALL Excel columns"""
+    if 'role' not in session or session['role'] != 'admin':
+        return jsonify({'error': 'Unauthorized'}), 403
+    
+    conn = get_db_connection()
+    try:
+        client = conn.execute("SELECT * FROM clients WHERE id = ?", (client_id,)).fetchone()
+        if not client:
+            return jsonify({'error': 'Client not found'}), 404
+            
+        result = {
+            'id': client['id'],
+            'business_name': client['business_name'],
+            'location': client['location'],
+            'phone': client['phone'],
+            'anydesk': client['anydesk'],
+            'source_file': client['source_file'],
+            'created_at': client['created_at']
+        }
+        
+        # Parse and add ALL extra_data fields
+        if client['extra_data']:
+            try:
+                extra = json.loads(client['extra_data'])
+                if isinstance(extra, dict):
+                    for key, value in extra.items():
+                        result[key] = value
+            except:
+                result['extra_data'] = client['extra_data']
+        
+        # Format as array for easy display
+        formatted_data = []
+        for key, value in result.items():
+            if key not in ['id', 'created_at']:  # Skip internal fields
+                formatted_data.append({
+                    'field': key,
+                    'value': value if value else 'אין'
+                })
+        
+        return jsonify(formatted_data)
+        
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+    finally:
+        conn.close()
+
+@app.route('/api/clients/fields')
+def get_all_fields():
+    """Get all unique field names from all clients' extra_data"""
+    if 'role' not in session or session['role'] != 'admin':
+        return jsonify({'error': 'Unauthorized'}), 403
+    
+    conn = get_db_connection()
+    try:
+        clients = conn.execute("SELECT extra_data FROM clients WHERE extra_data IS NOT NULL AND extra_data != ''").fetchall()
+        
+        all_fields = set(['business_name', 'location', 'phone', 'anydesk', 'source_file'])
+        
+        for client in clients:
+            try:
+                extra = json.loads(client['extra_data'])
+                if isinstance(extra, dict):
+                    all_fields.update(extra.keys())
+            except:
+                continue
+        
+        return jsonify({
+            'fields': sorted(list(all_fields)),
+            'count': len(all_fields)
+        })
+    finally:
+        conn.close()
+
+@app.route('/admin/full')
+def admin_full_view():
+    if 'role' not in session or session['role'] != 'admin':
+        return redirect(url_for('login'))
+    return render_template('admin_full_view.html', username=session['username'])
+
+@app.route('/api/clients/export')
+def export_clients():
+    if 'role' not in session or session['role'] != 'admin':
+        return jsonify({'error': 'Unauthorized'}), 403
+    
+    export_format = request.args.get('format', 'excel')
+    selected_columns = request.args.get('columns', '').split(',')
+    location_filter = request.args.get('location', '')
+    
+    conn = get_db_connection()
+    
+    # Build query
+    query = "SELECT * FROM clients"
+    params = []
+    if location_filter:
+        query += " WHERE location = ?"
+        params.append(location_filter)
+    query += " ORDER BY id DESC"
+    
+    rows = conn.execute(query, params).fetchall()
+    
+    # Prepare data
+    data = []
+    for row in rows:
+        client = {}
+        # Always include base columns
+        client['id'] = row['id']
+        client['business_name'] = row['business_name']
+        client['location'] = row['location']
+        client['phone'] = row['phone']
+        client['anydesk'] = row['anydesk']
+        client['source_file'] = row['source_file']
+        client['created_at'] = row['created_at']
+        
+        # Add extra_data fields
+        if row['extra_data']:
+            try:
+                extra = json.loads(row['extra_data'])
+                if isinstance(extra, dict):
+                    for key, value in extra.items():
+                        client[key] = value
+            except:
+                pass
+        
+        data.append(client)
+    
+    conn.close()
+    
+    # Create DataFrame
+    df = pd.DataFrame(data)
+    
+    # Filter columns if specified
+    if selected_columns and selected_columns[0]:
+        available_columns = [col for col in selected_columns if col in df.columns]
+        df = df[available_columns]
+    
+    # Export based on format
+    if export_format == 'csv':
+        csv_data = df.to_csv(index=False, encoding='utf-8-sig')
+        return Response(
+            csv_data,
+            mimetype="text/csv",
+            headers={"Content-disposition": "attachment; filename=clients_export.csv"}
+        )
+    else:
+        # Excel export
+        output = BytesIO()
+        with pd.ExcelWriter(output, engine='openpyxl') as writer:
+            df.to_excel(writer, index=False, sheet_name='Clients')
+        
+        output.seek(0)
+        return send_file(
+            output,
+            mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+            as_attachment=True,
+            download_name='clients_export.xlsx'
+        )
+@app.route('/api/contact', methods=['GET', 'POST'])
+def handle_contact():
+    conn = get_db_connection()
+    if request.method == 'POST':
+        data = request.json
+        conn.execute('INSERT INTO contact_messages (name, phone, message) VALUES (?, ?, ?)',
+                     (data.get('name'), data.get('phone'), data.get('message')))
+        conn.commit()
+        conn.close()
+        return jsonify({'success': True})
+    
+    # GET - Admin only
+    if 'role' not in session or session['role'] != 'admin':
+         conn.close()
+         return jsonify({'error': 'Unauthorized'}), 403
+
+    messages = conn.execute('SELECT * FROM contact_messages ORDER BY id DESC').fetchall()
+    conn.close()
+    return jsonify([dict(m) for m in messages])
+
+@app.route('/api/contact/<int:message_id>', methods=['DELETE'])
+def delete_contact_message(message_id):
+    if 'role' not in session or session['role'] != 'admin':
+        return jsonify({'error': 'Unauthorized'}), 403
+    
+    conn = get_db_connection()
+    try:
+        conn.execute('DELETE FROM contact_messages WHERE id = ?', (message_id,))
+        conn.commit()
+        return jsonify({'success': True})
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+    finally:
+        conn.close()
 
 if __name__ == '__main__':
     app.run(debug=True, port=5001)

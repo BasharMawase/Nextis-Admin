@@ -13,7 +13,7 @@
     <div class="sidebar" id="sidebar">
         <div class="logo">
             <span class="logo-icon">🛡️</span>
-            <h2>Nexsis Admin</h2>
+            <h2>Nextis Admin</h2>
         </div>
 
         <!-- Collapse Button -->
@@ -25,13 +25,22 @@
             <h3>פעולות</h3>
             <button class="btn-primary" style="width: 100%; margin-bottom: 24px;" onclick="openAddClientModal()">➕ הוספת
                 לקוח חדש</button>
+            <a href="/admin/full" class="btn-primary"
+                style="width: 100%; margin-bottom: 24px; display: block; text-align: center; text-decoration: none;">📊
+                תצוגה מלאה</a>
 
             <h3>העלאת נתונים</h3>
             <div class="upload-box" id="uploadBox">
                 <p>גרור ושחרר קבצים כאן</p>
-                <p class="file-limit">עד 200MB לקובץ • XLSX, XLS, CSV</p>
+                <p class="file-limit">עד 200MB לקבוץ • XLSX, XLS, CSV</p>
                 <button class="btn-upload" onclick="document.getElementById('fileInput').click()">בחר קבצים</button>
                 <input type="file" id="fileInput" accept=".xlsx,.xls,.csv" multiple style="display: none;">
+            </div>
+
+            <!-- Uploaded Files List -->
+            <div id="uploadedFilesList" style="margin-top: 20px;">
+                <h4 style="font-size: 14px; margin-bottom: 10px; color: #a0aec0;">קבצים שהועלו</h4>
+                <div id="filesContainer"></div>
             </div>
         </div>
 
@@ -167,9 +176,12 @@
 
     <!-- Main Content -->
     <div class="main-content" id="mainContent">
-        <header>
-            <h1>🛡️ לוח בקרה ניהולי</h1>
-            <p>ניהול לקוחות, העלאת קבצים, חיפוש מתקדם וניתוח נתונים</p>
+        <header style="display: flex; justify-content: space-between; align-items: center;">
+            <div>
+                <h1>🛡️ לוח בקרה ניהולי</h1>
+                <p>ניהול לקוחות, העלאת קבצים, חיפוש מתקדם וניתוח נתונים</p>
+            </div>
+
         </header>
 
         <div id="welcomeMessage" class="info-message">
@@ -232,7 +244,11 @@
             <!-- Full Data Matrix Section -->
             <div class="glass-card full-width" style="margin-top: 40px;" id="matrixSection">
                 <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
-                    <h3>📋 מטריצת נתונים מלאה - כל הקבצים ביחד</h3>
+                    <div style="display: flex; align-items: center; gap: 10px;">
+                        <h3>📋 מטריצת נתונים מלאה - כל הקבצים ביחד</h3>
+                        <button onclick="toggleMatrix()" class="btn-primary"
+                            style="padding: 4px 8px; font-size: 0.8rem; background: #4a5568;">➖ / ➕</button>
+                    </div>
                     <div style="display: flex; gap: 10px; align-items: center;">
                         <button id="prevPage" onclick="changePage(-1)" class="btn-primary" style="padding: 8px 16px;">←
                             הקודם</button>
@@ -241,7 +257,7 @@
                             →</button>
                     </div>
                 </div>
-                <div class="table-container">
+                <div class="table-container" id="matrixContainer">
                     <table id="dataTable">
                         <thead id="tableHeader"></thead>
                         <tbody id="tableBody"></tbody>
@@ -249,6 +265,16 @@
                 </div>
             </div>
         </section>
+
+        <!-- Contact Messages Section -->
+        <div class="glass-card full-width" style="margin-top: 40px;">
+            <h3>📬 הודעות שהתקבלו (צור קשר)</h3>
+            <div id="messagesList"
+                style="display: flex; flex-direction: column; gap: 10px; max-height: 400px; overflow-y: auto; padding-right: 5px;">
+                <!-- Messages will be loaded here -->
+                <p style="color: #a0aec0; font-style: italic;">טוען הודעות...</p>
+            </div>
+        </div>
 
         <!-- Portfolio Manager -->
         <div class="glass-card full-width" style="margin-top: 40px;">

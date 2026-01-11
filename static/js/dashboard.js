@@ -78,7 +78,104 @@ if (citySearchInput) {
 document.addEventListener('DOMContentLoaded', () => {
     loadAnalytics();
     loadMatrix();
+    loadUploadedFiles();
+    loadContactMessages();
 });
+
+// Load uploaded files list
+async function loadUploadedFiles() {
+    try {
+        const response = await fetch('/api/files/list');
+        const data = await response.json();
+
+        const container = document.getElementById('filesContainer');
+        if (!container) return;
+
+        if (!data.files || data.files.length === 0) {
+            container.innerHTML = '<p style="color: #718096; font-size: 12px; font-style: italic;">אין קבצים</p>';
+            return;
+        }
+
+        container.innerHTML = '';
+        data.files.forEach(file => {
+            const fileItem = document.createElement('div');
+            fileItem.style.cssText = `
+                background: rgba(30, 35, 48, 0.5);
+                border: 1px solid rgba(255, 255, 255, 0.05);
+                border-radius: 8px;
+                padding: 10px;
+                margin-bottom: 8px;
+                display: flex;
+                justify-content: space-between;
+                align-items: center;
+            `;
+
+            const fileInfo = document.createElement('div');
+            fileInfo.style.flex = '1';
+            fileInfo.innerHTML = `
+                <div style="font-size: 12px; color: #e2e8f0; font-weight: 500; margin-bottom: 4px;">${file.name}</div>
+                <div style="font-size: 10px; color: #a0aec0;">${formatFileSize(file.size)} • ${file.modified}</div>
+            `;
+
+            const deleteBtn = document.createElement('button');
+            deleteBtn.innerHTML = '🗑️';
+            deleteBtn.style.cssText = `
+                background: rgba(220, 38, 38, 0.1);
+                border: 1px solid rgba(220, 38, 38, 0.3);
+                color: #dc2626;
+                padding: 6px 10px;
+                border-radius: 6px;
+                cursor: pointer;
+                font-size: 14px;
+                transition: all 0.2s;
+            `;
+            deleteBtn.onclick = () => deleteUploadedFile(file.name);
+            deleteBtn.onmouseover = () => {
+                deleteBtn.style.background = 'rgba(220, 38, 38, 0.2)';
+            };
+            deleteBtn.onmouseout = () => {
+                deleteBtn.style.background = 'rgba(220, 38, 38, 0.1)';
+            };
+
+            fileItem.appendChild(fileInfo);
+            fileItem.appendChild(deleteBtn);
+            container.appendChild(fileItem);
+        });
+    } catch (error) {
+        console.error('Error loading files:', error);
+    }
+}
+
+function formatFileSize(bytes) {
+    if (bytes < 1024) return bytes + ' B';
+    else if (bytes < 1048576) return (bytes / 1024).toFixed(1) + ' KB';
+    else return (bytes / 1048576).toFixed(1) + ' MB';
+}
+
+async function deleteUploadedFile(filename) {
+    if (!confirm(`האם למחוק את הקובץ "${filename}"?`)) return;
+
+    try {
+        const response = await fetch('/api/files/delete', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ filename })
+        });
+
+        const data = await response.json();
+        if (data.success) {
+            loadUploadedFiles();
+            loadAnalytics();  // Refresh stats
+            loadMatrix();     // Refresh table/matrix
+            alert('הקובץ והנתונים נמחקו בהצלחה');
+        } else {
+            alert('שגיאה: ' + (data.error || 'לא ניתן למחוק'));
+        }
+    } catch (error) {
+        console.error('Error:', error);
+        alert('שגיאה במחיקת הקובץ');
+    }
+}
 
 // Drag and drop
 uploadBox.addEventListener('dragover', (e) => {
@@ -125,6 +222,7 @@ async function uploadFiles(files) {
 
         if (data.success) {
             loadAnalytics();
+            loadUploadedFiles();
             resetUploadBox();
         } else {
             alert('שגיאה בהעלאת קובץ: ' + data.error);
@@ -191,16 +289,52 @@ function displaySearchResults(results, container) {
         const name = business.business_name || business['Business Name'] || 'לא ידוע';
         const location = business.location || business.Location || 'לא ידוע';
         const phone = business.phone || business.Phone || 'אין';
-        const anydesk = business.anydesk || business.AnyDesk || 'אין';
+        // const anydesk = business.anydesk || business.AnyDesk || 'אין'; 
 
-        card.onclick = () => openClientDetails(business); // Click to open details
+        // Parse extra_data to find specific Book_4 fields
+        let extraFieldsHtml = '';
+        let extraDataObj = {};
+        let extraCount = 0;
+
+        if (business.extra_data) {
+            try {
+                extraDataObj = JSON.parse(business.extra_data);
+                extraCount = Object.keys(extraDataObj).length;
+            } catch (e) { }
+        }
+
+        const targetFields = [
+            { key: 'בעלים', label: '👤 בעלים' },
+            { key: 'אופן תשלום', label: '💳 תשלום' },
+            { key: "מס' מורשה", label: '🔢 מורשה' },
+            { key: "מס' מסוף", label: '📠 מסוף' },
+            { key: 'ציוד', label: '🛠️ ציוד' },
+            { key: 'תראיך התחלה', label: '📅 התחלה' },
+            { key: 'תאריך התחלה', label: '📅 התחלה' }
+        ];
+
+        targetFields.forEach(field => {
+            if (extraDataObj[field.key]) {
+                extraFieldsHtml += `
+                    <div class="card-sub-detail">
+                        <span class="sub-label">${field.label}:</span>
+                        <span class="sub-value">${extraDataObj[field.key]}</span>
+                    </div>
+                 `;
+            }
+        });
+
+        card.onclick = () => openClientDetails(business);
         card.innerHTML = `
             <div class="card-title">${name}</div>
             <div class="card-detail">📍 <strong>עיר:</strong> ${location}</div>
             <div class="card-detail" style="color: #2a9d8f; font-weight: 600;">
                 📞 <strong>טלפון:</strong> ${formatPhoneDisplay(phone)}
             </div>
-            <span class="anydesk-badge">💻 AnyDesk: ${anydesk}</span>
+            
+            ${extraFieldsHtml ? `<div class="card-extra-section">${extraFieldsHtml}</div>` : ''}
+
+            ${extraCount > 0 ? `<div class="data-badge">+${extraCount} פרטים נוספים</div>` : ''}
         `;
         container.appendChild(card);
     });
@@ -209,61 +343,315 @@ function displaySearchResults(results, container) {
 const clientDetailsModal = document.getElementById('clientDetailsModal');
 let currentViewingClient = null;
 
-function openClientDetails(client) {
+async function openClientDetails(client) {
     currentViewingClient = client;
-    const name = client.business_name || client['Business Name'] || 'לא ידוע';
+    const clientDetailsModal = document.getElementById('clientDetailsModal');
 
+    // Setup Modal Structure if not already upgraded
+    const modalContent = clientDetailsModal.querySelector('.modal-content');
+    // Force structure update to ensure buttons are present
+    modalContent.innerHTML = `
+        <div class="modal-header-custom">
+            <span class="close" onclick="closeClientDetailsModal()">&times;</span>
+            <h2 id="detailBusinessName" style="font-size: 2rem; margin-bottom: 8px; color: white;"></h2>
+            <div style="display: flex; gap: 10px;">
+                <button class="btn-primary" onclick="openEditClientModalFromDetails()" style="width: auto; padding: 8px 16px; font-size: 0.9rem;">✎ עריכה</button>
+                <button class="btn-primary" onclick="printClientDetails()" style="width: auto; padding: 8px 16px; font-size: 0.9rem; background: #059669;">🖨️ הדפסה</button>
+                <button class="btn-danger" onclick="confirmDeleteClient()" style="width: auto; padding: 8px 16px; font-size: 0.9rem;">🗑️ מחיקה</button>
+            </div>
+        </div>
+        <div class="modal-body-custom">
+            <div id="coreInfoGrid" class="core-info-grid"></div>
+            
+            <div id="businessDetailsSection" style="display:none;">
+                <h3 style="font-size: 1.1rem; color: #a0aec0; margin: 24px 0 16px 0; border-bottom: 1px solid rgba(255,255,255,0.05); padding-bottom: 8px;">פרטי עסק ומסוף</h3>
+                <div id="businessDetailsGrid" class="core-info-grid" style="grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));"></div>
+            </div>
+
+            <h3 style="font-size: 1.1rem; color: #a0aec0; margin: 24px 0 16px 0; border-bottom: 1px solid rgba(255,255,255,0.05); padding-bottom: 8px;">מידע נוסף</h3>
+            <div id="extendedDetailsGrid" class="extended-details-grid"></div>
+        </div>
+    `;
+
+    // Function to handle printing via hidden iframe (Seamless)
+    window.printClientDetails = function () {
+        if (!client) return;
+
+        // Create hidden iframe
+        let printFrame = document.getElementById('printFrame');
+        if (!printFrame) {
+            printFrame = document.createElement('iframe');
+            printFrame.id = 'printFrame';
+            printFrame.style.position = 'fixed';
+            printFrame.style.right = '0';
+            printFrame.style.bottom = '0';
+            printFrame.style.width = '0';
+            printFrame.style.height = '0';
+            printFrame.style.border = '0';
+            document.body.appendChild(printFrame);
+        }
+
+        const date = new Date().toLocaleDateString('he-IL');
+        const coreInfo = document.getElementById('coreInfoGrid').innerHTML;
+        const businessInfo = document.getElementById('businessDetailsGrid').innerHTML;
+        const extendedInfo = document.getElementById('extendedDetailsGrid').innerHTML;
+        const businessInfoDisplay = document.getElementById('businessDetailsSection').style.display !== 'none' ? businessInfo : '';
+
+        const htmlContent = `
+            <!DOCTYPE html>
+            <html lang="he" dir="rtl">
+            <head>
+                <title>הדפסת פרטי לקוח - ${client.business_name || 'לקוח'}</title>
+                <style>
+                    body {
+                        font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+                        color: #000;
+                        background: #fff;
+                        padding: 20px 40px; /* Adjusted padding for A4 */
+                        direction: rtl;
+                    }
+                    .header {
+                        text-align: center;
+                        border-bottom: 2px solid #000;
+                        padding-bottom: 20px;
+                        margin-bottom: 30px;
+                    }
+                    h1 { margin: 0; font-size: 24pt; }
+                    .meta { color: #666; font-size: 10pt; margin-top: 10px; }
+                    
+                    .section { margin-bottom: 25px; page-break-inside: avoid; }
+                    .section-title {
+                        font-size: 14pt;
+                        font-weight: bold;
+                        border-bottom: 1px solid #ccc;
+                        padding-bottom: 5px;
+                        margin-bottom: 15px;
+                        display: flex;
+                        align-items: center;
+                    }
+                    
+                    .grid {
+                        display: grid;
+                        grid-template-columns: repeat(2, 1fr); /* 2 columns for A4 */
+                        gap: 15px;
+                    }
+                    
+                    .item {
+                        border: 1px solid #eee;
+                        padding: 10px;
+                        border-radius: 4px;
+                        background-color: #f9f9f9; /* Subtle background for clarity */
+                    }
+                    .label { color: #666; font-size: 9pt; margin-bottom: 3px; }
+                    .value { font-weight: 600; font-size: 11pt; }
+                    
+                    /* Mapping styles for existing HTML content */
+                    .core-info-item, .detail-card {
+                        border: 1px solid #ddd;
+                        padding: 10px;
+                        border-radius: 4px;
+                        background: #f9f9f9;
+                    }
+                    .core-text h4, .detail-card-label {
+                        margin: 0 0 5px 0;
+                        font-size: 9pt;
+                        color: #555;
+                    }
+                    .core-text p, .detail-card-value {
+                        margin: 0;
+                        font-weight: bold;
+                        font-size: 11pt;
+                    }
+                    .core-icon { display: none; } /* Hide icons for print */
+                    
+                    @media print {
+                        body { padding: 0.5cm; } /* Minimal padding for print */
+                        .no-print { display: none; }
+                        .item, .section { break-inside: avoid; }
+                    }
+                </style>
+            </head>
+            <body>
+                <div class="header">
+                    <h1>${client.business_name || 'פרטי לקוח'}</h1>
+                    <div class="meta">הודפס בתאריך: ${date}</div>
+                </div>
+
+                <div class="section">
+                    <div class="section-title">פרטים ראשיים</div>
+                    <div class="grid">
+                        ${coreInfo}
+                    </div>
+                </div>
+
+                ${businessInfoDisplay ? `
+                <div class="section">
+                    <div class="section-title">פרטי עסק ומסוף</div>
+                    <div class="grid">
+                        ${businessInfoDisplay}
+                    </div>
+                </div>` : ''}
+
+                <div class="section">
+                    <div class="section-title">מידע נוסף</div>
+                    <div class="grid">
+                        ${extendedInfo}
+                    </div>
+                </div>
+
+                <div style="margin-top: 50px; text-align: center; font-size: 9pt; color: #999; border-top: 1px solid #eee; padding-top: 10px;">
+                    Nextis Management System
+                </div>
+            </body>
+            </html>
+        `;
+
+        // Write content to iframe
+        const doc = printFrame.contentWindow.document;
+        doc.open();
+        doc.write(htmlContent);
+        doc.close();
+
+        // Print after image loading (if any) or slight delay
+        printFrame.contentWindow.onload = function () {
+            setTimeout(() => {
+                printFrame.contentWindow.focus();
+                printFrame.contentWindow.print();
+            }, 500);
+        };
+
+        // Fallback if onload doesn't trigger (e.g. no external resources)
+        setTimeout(() => {
+            if (printFrame.contentWindow.document.readyState === 'complete') {
+                printFrame.contentWindow.focus();
+                printFrame.contentWindow.print();
+            }
+        }, 1000);
+    };
+
+    const name = client.business_name || client['Business Name'] || 'לא ידוע';
     document.getElementById('detailBusinessName').textContent = name;
 
-    const container = document.getElementById('dynamicDetails');
-    container.innerHTML = '';
+    const coreContainer = document.getElementById('coreInfoGrid');
+    const extendedContainer = document.getElementById('extendedDetailsGrid');
 
-    let extraData = {};
-    let hasExtra = false;
-
-    try {
-        if (client.extra_data) {
-            extraData = JSON.parse(client.extra_data);
-            hasExtra = true;
-        }
-    } catch (e) {
-        console.error('Error parsing extra_data:', e);
-    }
-
-    // Fallback for legacy records or empty extra_data
-    if (!hasExtra || Object.keys(extraData).length === 0) {
-        extraData = {
-            '📍 מיקום': client.location || client.Location || 'לא ידוע',
-            '📞 טלפון': client.phone || client.Phone || 'אין',
-            '💻 AnyDesk': client.anydesk || client.AnyDesk || 'אין'
-        };
-    }
-
-    // Create grid items
-    Object.entries(extraData).forEach(([key, value]) => {
-        if (key === 'extra_data') return;
-
-        const item = document.createElement('div');
-        item.className = 'detail-item';
-
-        const label = document.createElement('span');
-        label.className = 'detail-label';
-        label.textContent = key; // Column name from Excel
-
-        const text = document.createElement('span');
-        text.className = 'detail-text';
-        text.textContent = value || '-';
-
-        item.appendChild(label);
-        item.appendChild(text);
-        container.appendChild(item);
-    });
+    // Loading State
+    coreContainer.innerHTML = '<div style="color:white">טוען...</div>';
+    extendedContainer.innerHTML = '';
 
     clientDetailsModal.style.display = 'block';
+
+    try {
+        // Fetch aggregated data
+        const response = await fetch(`/api/clients/details/${client.id}`);
+        const data = await response.json();
+
+        if (data.error) {
+            coreContainer.innerHTML = `<p style="color: red;">שגיאה: ${data.error}</p>`;
+            return;
+        }
+
+        coreContainer.innerHTML = '';
+        extendedContainer.innerHTML = '';
+
+        // Prioritize and Categorize
+        const coreFields = ['location', 'phone', 'anydesk', 'source_file'];
+        const iconMap = {
+            'location': '📍',
+            'phone': '📞',
+            'anydesk': '💻',
+            'source_file': '📁'
+        };
+        const labelMap = {
+            'location': 'מיקום',
+            'phone': 'טלפון',
+            'anydesk': 'AnyDesk',
+            'source_file': 'מקור הנתונים'
+        };
+
+        // 1. Render Core Info
+        coreFields.forEach(key => {
+            const item = data.find(i => i.Field === key);
+            let value = item ? item.Value : (client[key] || '-');
+
+            if (key === 'phone') value = formatPhoneDisplay(value);
+
+            const div = document.createElement('div');
+            div.className = 'core-info-item';
+            div.innerHTML = `
+                <div class="core-icon">${iconMap[key]}</div>
+                <div class="core-text">
+                    <h4>${labelMap[key]}</h4>
+                    <p>${value}</p>
+                </div>
+            `;
+            coreContainer.appendChild(div);
+        });
+
+        // 2. Render Extended Info
+        let extendedCount = 0;
+        data.forEach(item => {
+            if (coreFields.includes(item.Field) || ['id', 'created_at', 'business_name', 'extra_data'].includes(item.Field)) return;
+            if (!item.Value && item.Value !== 0) return; // Skip empty
+
+            const div = document.createElement('div');
+            div.className = 'detail-card';
+            div.innerHTML = `
+                <span class="detail-card-label">${item.Field}</span>
+                <div class="detail-card-value">${item.Value}</div>
+            `;
+            extendedContainer.appendChild(div);
+            extendedCount++;
+        });
+
+        if (extendedCount === 0) {
+            extendedContainer.innerHTML = '<p style="color: #4a5568; font-style: italic;">אין מידע נוסף להצגה</p>';
+        }
+
+    } catch (error) {
+        console.error('Error fetching client details:', error);
+        coreContainer.innerHTML = '<p style="color: red;">שגיאה בטעינת הנתונים</p>';
+    }
 }
 
 function closeClientDetailsModal() {
     clientDetailsModal.style.display = 'none';
+}
+
+function confirmDeleteClient() {
+    if (!currentViewingClient) return;
+
+    const clientName = currentViewingClient.business_name || 'לקוח זה';
+    const confirmed = confirm(`האם אתה בטוח שברצונך למחוק את ${clientName}?\nפעולה זו לא ניתנת לביטול.`);
+
+    if (confirmed) {
+        deleteClient(currentViewingClient.id);
+    }
+}
+
+async function deleteClient(clientId) {
+    try {
+        const response = await fetch(`/api/clients/delete/${clientId}`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            }
+        });
+
+        const data = await response.json();
+
+        if (data.success) {
+            closeClientDetailsModal();
+            loadAnalytics();
+            loadMatrix();
+            alert('הלקוח נמחק בהצלחה!');
+        } else {
+            alert('שגיאה במחיקת הלקוח: ' + (data.error || 'שגיאה לא ידועה'));
+        }
+    } catch (error) {
+        console.error('Error:', error);
+        alert('שגיאה במחיקת הלקוח');
+    }
 }
 
 // Load analytics
@@ -759,11 +1147,84 @@ function changePage(delta) {
     loadMatrix();
 }
 
+function toggleMatrix() {
+    const container = document.getElementById('matrixContainer');
+    if (container.style.display === 'none') {
+        container.style.display = 'block';
+    } else {
+        container.style.display = 'none';
+    }
+}
 
+async function loadContactMessages() {
+    const list = document.getElementById('messagesList');
+    if (!list) return;
 
+    try {
+        const res = await fetch('/api/contact');
+        const messages = await res.json();
 
+        list.innerHTML = '';
+        if (messages.length === 0) {
+            list.innerHTML = '<p style="color: #a0aec0; font-style: italic;">אין הודעות חדשות</p>';
+            return;
+        }
 
+        messages.forEach(msg => {
+            const div = document.createElement('div');
+            div.id = `message-${msg.id}`;
+            div.style.cssText = 'background: rgba(255,255,255,0.05); padding: 15px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.1); position: relative; transition: all 0.3s ease;';
+            div.innerHTML = `
+                <button onclick="markMessageAsRead(${msg.id})" 
+                    style="position: absolute; top: 10px; left: 10px; background: rgba(16, 185, 129, 0.2); border: 1px solid rgba(16, 185, 129, 0.5); color: #10b981; padding: 6px 12px; border-radius: 6px; cursor: pointer; font-size: 0.85rem; transition: all 0.2s;"
+                    onmouseover="this.style.background='rgba(16, 185, 129, 0.3)'"
+                    onmouseout="this.style.background='rgba(16, 185, 129, 0.2)'">
+                    ✓ סמן כנקרא
+                </button>
+                <div style="display:flex; justify-content:space-between; margin-bottom:5px; padding-left: 120px;">
+                    <strong style="color: #e63946;">${msg.name}</strong>
+                    <span style="color: #a0aec0; font-size: 0.8rem;">${msg.created_at}</span>
+                </div>
+                <div style="margin-bottom: 5px; color: #a0aec0; font-size: 0.9rem;">📞 ${msg.phone}</div>
+                <div style="color: #e2e8f0;">${msg.message || ''}</div>
+            `;
+            list.appendChild(div);
+        });
 
+    } catch (e) {
+        console.error(e);
+        list.innerHTML = '<p style="color: red;">שגיאה בטעינת הודעות</p>';
+    }
+}
 
+async function markMessageAsRead(messageId) {
+    const messageDiv = document.getElementById(`message-${messageId}`);
+    if (!messageDiv) return;
 
+    try {
+        const res = await fetch(`/api/contact/${messageId}`, {
+            method: 'DELETE'
+        });
 
+        if (res.ok) {
+            // Animate out
+            messageDiv.style.opacity = '0';
+            messageDiv.style.transform = 'translateX(20px)';
+
+            setTimeout(() => {
+                messageDiv.remove();
+
+                // Check if no messages left
+                const list = document.getElementById('messagesList');
+                if (list && list.children.length === 0) {
+                    list.innerHTML = '<p style="color: #a0aec0; font-style: italic;">אין הודעות חדשות</p>';
+                }
+            }, 300);
+        } else {
+            alert('שגיאה במחיקת ההודעה');
+        }
+    } catch (e) {
+        console.error(e);
+        alert('שגיאה בתקשורת');
+    }
+}

@@ -1,0 +1,296 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin - Full Client Data</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.datatables.net/1.11.5/css/dataTables.bootstrap5.min.css" rel="stylesheet">
+    <style>
+        :root {
+            direction: rtl;
+        }
+
+        .table-container {
+            overflow-x: auto;
+        }
+
+        th {
+            white-space: nowrap;
+        }
+
+        .field-pill {
+            background: #e9ecef;
+            padding: 2px 8px;
+            margin: 2px;
+            border-radius: 12px;
+            display: inline-block;
+        }
+    </style>
+</head>
+
+<body>
+    <nav class="navbar navbar-expand-lg navbar-dark bg-dark">
+        <div class="container-fluid">
+            <a class="navbar-brand" href="#">Nextis Admin - Full Data View</a>
+            <div class="navbar-nav ms-auto">
+                <span class="navbar-text me-3">שלום, {{ username }}</span>
+                <a href="/admin" class="btn btn-outline-light btn-sm me-2">Dashboard</a>
+                <a href="/logout" class="btn btn-outline-danger btn-sm">יציאה</a>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container-fluid mt-4">
+        <div class="row mb-3">
+            <div class="col">
+                <h3>כל הנתונים - הצגה מלאה</h3>
+                <div class="alert alert-info">
+                    <strong>מידע:</strong> טבלה זו מציגה את כל העמודות מהקובץ האקסל המקורי.
+                    <span id="fieldsCount"></span>
+                </div>
+            </div>
+        </div>
+
+        <div class="row mb-3">
+            <div class="col">
+                <div class="card">
+                    <div class="card-body">
+                        <h5 class="card-title">סינון וניהול</h5>
+                        <div class="row g-2">
+                            <div class="col-md-3">
+                                <input type="text" id="searchInput" class="form-control"
+                                    placeholder="חיפוש בכל השדות...">
+                            </div>
+                            <div class="col-md-3">
+                                <select id="locationFilter" class="form-select">
+                                    <option value="">כל המיקומים</option>
+                                </select>
+                            </div>
+                            <div class="col-md-3">
+                                <select id="columnFilter" class="form-select" multiple>
+                                    <option value="">טוען עמודות...</option>
+                                </select>
+                            </div>
+                            <div class="col-md-3">
+                                <button class="btn btn-primary w-100" onclick="loadClients()">טען נתונים</button>
+                            </div>
+                        </div>
+                        <div class="mt-2" id="activeFilters"></div>
+                        <div class="mt-2">
+                            <button class="btn btn-success btn-sm" onclick="exportToExcel()">Excel ייצוא ל</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="row">
+            <div class="col">
+                <div class="table-container">
+                    <table id="clientsTable" class="table table-striped table-bordered" style="width:100%">
+                        <thead>
+                            <tr id="tableHeaders">
+                                <th>#</th>
+                                <th>שם עסק</th>
+                                <th>מיקום</th>
+                                <th>טלפון</th>
+                                <!-- Dynamic headers will be added here -->
+                            </tr>
+                        </thead>
+                        <tbody></tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Client Details Modal -->
+    <div class="modal fade" id="clientModal" tabindex="-1">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">פרטי לקוח</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <div id="clientDetails"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://cdn.datatables.net/1.11.5/js/jquery.dataTables.min.js"></script>
+    <script src="https://cdn.datatables.net/1.11.5/js/dataTables.bootstrap5.min.js"></script>
+
+    <script>
+        let allFields = [];
+        let table;
+
+        $(document).ready(function () {
+            loadFields();
+            loadLocations();
+        });
+
+        function loadFields() {
+            $.get('/api/clients/fields', function (data) {
+                allFields = data.fields;
+                $('#fieldsCount').html(`נמצאו ${data.count} שדות שונים.`);
+
+                // Populate column filter
+                const columnFilter = $('#columnFilter');
+                columnFilter.empty();
+                allFields.forEach(field => {
+                    columnFilter.append(new Option(field, field));
+                });
+
+                // Initialize Select2 for multi-select if needed
+                // if ($.fn.select2) {
+                //     columnFilter.select2({
+                //         placeholder: "בחר עמודות להצגה",
+                //         allowClear: true
+                //     });
+                // }
+
+                loadClients();
+            });
+        }
+
+        function loadLocations() {
+            $.get('/api/analytics', function (data) {
+                const locationFilter = $('#locationFilter');
+                data.locations.forEach(loc => {
+                    locationFilter.append(new Option(`${loc.name} (${loc.count})`, loc.name));
+                });
+            });
+        }
+
+        function loadClients() {
+            const location = $('#locationFilter').val();
+            const search = $('#searchInput').val();
+            const selectedColumns = $('#columnFilter').val() || [];
+
+            // Build URL
+            let url = '/api/clients/all?expanded=true&limit=1000';
+            if (location) url += `&location=${encodeURIComponent(location)}`;
+
+            $.get(url, function (data) {
+                updateTable(data.data, selectedColumns, search);
+            });
+        }
+
+        function updateTable(clients, selectedColumns, searchTerm) {
+            // Clear table
+            if ($.fn.DataTable.isDataTable('#clientsTable')) {
+                table.destroy();
+            }
+            $('#clientsTable tbody').empty();
+
+            const headers = $('#tableHeaders');
+            // Reset headers to base configuration
+            headers.html(`
+                <th>#</th>
+                <th>שם עסק</th>
+                <th>מיקום</th>
+                <th>טלפון</th>
+            `);
+
+            // Always show base columns for data display
+            const baseColumns = ['business_name', 'location', 'phone'];
+
+            // Combine base columns with user selection
+            let columnsToShow = selectedColumns.length > 0 ? selectedColumns : [];
+
+            // Add dynamic headers for selected columns NOT in base (if any logic needed)
+            // But actually we just want to append the chosen extra columns
+
+            columnsToShow.forEach(col => {
+                // Avoid duplicating base columns if already there, 
+                // but the user's logic was to append custom logic.
+                // Let's rely on the user snippet's logic roughly:
+                if (!baseColumns.includes(col) && col !== 'anydesk') { // 'anydesk' is sometimes base, sometimes not
+                    headers.append(`<th>${col}</th>`);
+                }
+            });
+
+            // Re-eval which columns are actually being shown in order
+            const finalColumns = ['business_name', 'location', 'phone', ...columnsToShow.filter(c => !['business_name', 'location', 'phone'].includes(c))];
+
+            // Filter clients by search term
+            let filteredClients = clients;
+            if (searchTerm) {
+                const searchLower = searchTerm.toLowerCase();
+                filteredClients = clients.filter(client => {
+                    return Object.values(client).some(value =>
+                        String(value).toLowerCase().includes(searchLower)
+                    );
+                });
+            }
+
+            // Populate rows
+            const tbody = $('#clientsTable tbody');
+            filteredClients.forEach((client, index) => {
+                let row = `<tr onclick="showClientDetails(${client.id})" style="cursor: pointer;">`;
+                row += `<td>${index + 1}</td>`;
+
+                // Base columns
+                row += `<td>${client.business_name || ''}</td>`;
+                row += `<td>${client.location || ''}</td>`;
+                row += `<td>${client.phone || ''}</td>`;
+
+                // Dynamic columns
+                columnsToShow.forEach(col => {
+                    if (!['business_name', 'location', 'phone'].includes(col)) {
+                        let value = client[col] || '';
+                        if (value && value.length > 50) {
+                            value = value.substring(0, 50) + '...';
+                        }
+                        row += `<td title="${client[col] || ''}">${value}</td>`;
+                    }
+                });
+
+                row += '</tr>';
+                tbody.append(row);
+            });
+
+            table = $('#clientsTable').DataTable({
+                pageLength: 50,
+                language: {
+                    url: '//cdn.datatables.net/plug-ins/1.11.5/i18n/he.json'
+                }
+            });
+        }
+
+        function showClientDetails(clientId) {
+            $.get(`/api/clients/full/${clientId}`, function (data) {
+                let html = '<table class="table table-bordered">';
+                data.forEach(item => {
+                    html += `<tr>
+                        <th style="width: 30%">${item.field}</th>
+                        <td>${item.value || 'אין'}</td>
+                    </tr>`;
+                });
+                html += '</table>';
+
+                $('#clientDetails').html(html);
+                $('#clientModal').modal('show');
+            });
+        }
+
+        // Export to Excel function
+        function exportToExcel() {
+            const selectedColumns = $('#columnFilter').val() || allFields;
+            const location = $('#locationFilter').val();
+
+            let url = `/api/clients/export?format=excel&columns=${encodeURIComponent(selectedColumns.join(','))}`;
+            if (location) url += `&location=${encodeURIComponent(location)}`;
+
+            window.location.href = url;
+        }
+    </script>
+</body>
+
+</html>

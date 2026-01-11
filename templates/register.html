@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>הרשמה למערכת - Nexsis</title>
+    <title>הרשמה למערכת - Nextis</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='css/dashboard.css') }}">
     <style>
         body {
@@ -29,7 +29,7 @@
             font-size: 24px;
             font-weight: 700;
             margin-bottom: 24px;
-            color: #ffffff;
+            color: #a0aec0;
         }
 
         .form-group {
@@ -91,9 +91,9 @@
 <body>
     <div class="auth-card">
         <div style="display: flex; flex-direction: column; align-items: center; gap: 20px; margin-bottom: 30px;">
-            <img src="{{ url_for('static', filename='logo.jpg') }}" alt="Nexsis Logo"
+            <img src="{{ url_for('static', filename='logo.jpg') }}" alt="Nextis Logo"
                 style="height: 80px; width: auto; border-radius: 12px; box-shadow: 0 6px 20px rgba(0,0,0,0.4);">
-            <div class="auth-title" style="margin-bottom: 0;">הרשמה למערכת - Nexsis</div>
+            <div class="auth-title" style="margin-bottom: 0;">הרשמה למערכת - Nextis</div>
         </div>
 
         {% with messages = get_flashed_messages() %}
@@ -113,9 +113,9 @@
             </div>
             <div class="form-group">
                 <label>קוד מנהל (אופציונלי)</label>
-                <input type="password" name="secret_code" class="form-input"
-                    placeholder="אם יש לך קוד מנהל, הזן כאן...">
+                <input type="password" name="secret_code" class="form-input" placeholder="רק למנהלים - הזן קוד גישה">
             </div>
+
             <button type="submit" class="btn-submit">
                 <span>✅</span>
                 <span>יצירת חשבון</span>

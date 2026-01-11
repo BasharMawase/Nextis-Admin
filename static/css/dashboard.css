@@ -14,6 +14,15 @@ body {
     /* RTL Support */
 }
 
+h1,
+h2,
+h3,
+h4,
+h5,
+h6 {
+    color: #a0aec0;
+}
+
 /* Sidebar */
 .sidebar {
     width: 280px;
@@ -213,23 +222,49 @@ header p {
 }
 
 .business-card {
-    background-color: #1e2330;
-    border: 1px solid #2d3748;
+    background: rgba(30, 35, 48, 0.6);
+    backdrop-filter: blur(12px);
+    border: 1px solid rgba(255, 255, 255, 0.08);
     border-right: 4px solid #e63946;
-    border-radius: 8px;
-    padding: 14px;
+    border-radius: 12px;
+    padding: 20px;
     transition: all 0.3s ease;
     cursor: pointer;
+    position: relative;
+    overflow: hidden;
+}
+
+.business-card::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: linear-gradient(135deg, rgba(230, 57, 70, 0.05) 0%, transparent 50%);
+    opacity: 0;
+    transition: opacity 0.3s ease;
+    pointer-events: none;
+}
+
+.business-card:hover::before {
+    opacity: 1;
 }
 
 .detail-value {
-    background-color: #0e1117;
-    border: 1px solid #2d3748;
-    padding: 12px;
-    border-radius: 8px;
+    background: rgba(14, 17, 23, 0.5);
+    border: 1px solid rgba(255, 255, 255, 0.05);
+    padding: 16px;
+    border-radius: 12px;
     color: white;
     font-size: 16px;
     font-family: monospace;
+    transition: all 0.2s ease;
+}
+
+.detail-value:hover {
+    background: rgba(255, 255, 255, 0.08);
+    transform: translateY(-2px);
 }
 
 .details-grid {
@@ -242,41 +277,67 @@ header p {
 }
 
 .detail-item {
-    background-color: #0e1117;
-    border: 1px solid #2d3748;
-    padding: 12px;
-    border-radius: 8px;
+    background: rgba(14, 17, 23, 0.6);
+    backdrop-filter: blur(8px);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    padding: 16px;
+    border-radius: 12px;
+    transition: all 0.3s ease;
+}
+
+.detail-item:hover {
+    background: rgba(255, 255, 255, 0.05);
+    border-color: rgba(230, 57, 70, 0.3);
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
 }
 
 .detail-label {
     display: block;
-    font-size: 12px;
+    font-size: 0.75rem;
     color: #a0aec0;
-    margin-bottom: 4px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin-bottom: 8px;
+    font-weight: 600;
 }
 
 .detail-text {
-    font-size: 14px;
-    color: white;
+    font-size: 1rem;
+    color: #e2e8f0;
     word-break: break-word;
+    line-height: 1.5;
+    font-weight: 500;
 }
 
 .business-card:hover {
-    transform: translateY(-4px);
-    box-shadow: 0 8px 16px rgba(0, 0, 0, 0.4);
+    transform: translateY(-6px);
+    box-shadow: 0 12px 24px rgba(0, 0, 0, 0.4), 0 0 0 1px rgba(230, 57, 70, 0.2);
+    border-color: rgba(255, 255, 255, 0.15);
 }
 
 .card-title {
-    font-size: 18px;
+    font-size: 1.25rem;
     font-weight: 700;
-    margin-bottom: 10px;
+    margin-bottom: 14px;
+    color: #ffffff;
+    position: relative;
+    z-index: 1;
+    text-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
 }
 
 .card-detail {
     color: #cbd5e0;
-    margin-bottom: 6px;
-    font-size: 13px;
-    line-height: 1.3;
+    margin-bottom: 8px;
+    font-size: 0.9rem;
+    line-height: 1.5;
+    position: relative;
+    z-index: 1;
+}
+
+.card-detail strong {
+    color: #e2e8f0;
+    font-weight: 600;
 }
 
 .anydesk-badge {
@@ -289,6 +350,38 @@ header p {
     font-weight: 600;
     margin-top: 10px;
     font-size: 11px;
+}
+
+/* Extra section on card */
+.card-extra-section {
+    margin-top: 12px;
+    padding-top: 12px;
+    border-top: 1px solid rgba(255, 255, 255, 0.1);
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.card-sub-detail {
+    font-size: 0.85rem;
+    color: #cbd5e0;
+    display: flex;
+    justify-content: space-between;
+}
+
+.sub-label {
+    color: #a0aec0;
+    font-size: 0.8rem;
+}
+
+.sub-value {
+    color: #fff;
+    font-weight: 500;
+    max-width: 60%;
+    text-align: left;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
 }
 
 /* Analytics Section */
@@ -417,15 +510,124 @@ header p {
     backdrop-filter: blur(4px);
 }
 
+/* Glassmorphism Modal */
 .modal-content {
-    background: linear-gradient(135deg, #1e2330 0%, #252b3b 100%);
-    margin: 10% auto;
+    background: rgba(30, 35, 48, 0.95);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5), 0 0 0 1px rgba(255, 255, 255, 0.05);
+    border-radius: 24px;
+    padding: 0;
+    width: 90%;
+    max-width: 800px;
+    /* Wider for grid layout */
+    margin: 5% auto;
+    overflow: hidden;
+}
+
+.modal-header-custom {
+    background: linear-gradient(135deg, rgba(230, 57, 70, 0.1) 0%, rgba(30, 35, 48, 0) 100%);
     padding: 32px;
-    border: 1px solid #2d3748;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+    position: relative;
+}
+
+.modal-body-custom {
+    padding: 32px;
+    max-height: 70vh;
+    overflow-y: auto;
+}
+
+/* Core Info Grid */
+.core-info-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 20px;
+    margin-bottom: 30px;
+}
+
+.core-info-item {
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid rgba(255, 255, 255, 0.05);
+    border-radius: 16px;
+    padding: 16px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.core-icon {
+    width: 40px;
+    height: 40px;
+    background: rgba(230, 57, 70, 0.1);
+    color: #e63946;
     border-radius: 12px;
-    width: 100%;
-    max-width: 500px;
-    box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.2rem;
+}
+
+.core-text h4 {
+    color: #a0aec0;
+    font-size: 0.8rem;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin-bottom: 4px;
+}
+
+.core-text p {
+    color: white;
+    font-weight: 600;
+    font-size: 1.1rem;
+    margin: 0;
+}
+
+/* Extended Details Masonry */
+.extended-details-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+    gap: 16px;
+}
+
+.detail-card {
+    background: rgba(14, 17, 23, 0.5);
+    border: 1px solid rgba(255, 255, 255, 0.03);
+    border-radius: 12px;
+    padding: 16px;
+    transition: all 0.2s ease;
+}
+
+.detail-card:hover {
+    background: rgba(255, 255, 255, 0.05);
+    transform: translateY(-2px);
+}
+
+.detail-card-label {
+    color: #718096;
+    font-size: 0.75rem;
+    text-transform: uppercase;
+    margin-bottom: 8px;
+    display: block;
+}
+
+.detail-card-value {
+    color: #e2e8f0;
+    font-size: 0.95rem;
+    word-break: break-word;
+    line-height: 1.4;
+}
+
+/* Badge for Data Count */
+.data-badge {
+    background: rgba(72, 187, 120, 0.15);
+    color: #48bb78;
+    font-size: 0.75rem;
+    padding: 4px 8px;
+    border-radius: 6px;
+    margin-top: 8px;
+    display: inline-block;
 }
 
 .close {
@@ -490,6 +692,124 @@ header p {
 
 .btn-primary:hover {
     background-color: #c1121f;
+}
+
+.btn-danger {
+    background-color: #dc2626;
+    color: white;
+    border: none;
+    padding: 12px 24px;
+    border-radius: 8px;
+    font-weight: 600;
+    cursor: pointer;
+    font-size: 16px;
+    transition: background-color 0.2s;
+}
+
+.btn-danger:hover {
+    background-color: #b91c1c;
+}
+
+/* Print Styles */
+@media print {
+
+    /* Hide non-printable elements */
+    .sidebar,
+    .upload-section,
+    button,
+    .modal,
+    .info-message,
+    .analytics-summary,
+    .search-container,
+    .btn-back,
+    header button {
+        display: none !important;
+    }
+
+    /* Reset background and text colors */
+    body,
+    .main-content {
+        background: white !important;
+        color: black !important;
+        margin: 0 !important;
+        padding: 0 !important;
+        width: 100% !important;
+    }
+
+    /* Reset Header */
+    header {
+        background: none !important;
+        padding: 10px 0 !important;
+        margin-bottom: 20px !important;
+        border-bottom: 2px solid #000;
+    }
+
+    header h1 {
+        color: black !important;
+        font-size: 24px !important;
+        text-shadow: none !important;
+    }
+
+    header p {
+        color: #333 !important;
+    }
+
+    /* Format Grid */
+    .dashboard-grid {
+        display: block !important;
+        /* Block prevents grid cut-off */
+        padding: 0 !important;
+    }
+
+    /* Format Cards */
+    .business-card {
+        page-break-inside: avoid;
+        break-inside: avoid;
+        background: white !important;
+        border: 1px solid #ddd !important;
+        box-shadow: none !important;
+        margin-bottom: 15px !important;
+        border-radius: 4px !important;
+        padding: 15px !important;
+        color: black !important;
+        float: right;
+        /* For RTL support in print */
+        width: 30% !important;
+        /* Fit ~3 cards per row */
+        margin-left: 2%;
+        /* Spacing */
+    }
+
+    .business-card:nth-child(3n) {
+        margin-left: 0;
+        clear: left;
+        /* New row */
+    }
+
+    /* Ensure text is dark */
+    .card-title,
+    .card-detail,
+    .detail-value,
+    .card-extra-section {
+        color: black !important;
+        text-shadow: none !important;
+    }
+
+    .card-detail i {
+        color: #333 !important;
+    }
+
+    /* Show "More Details" badge as text */
+    .details-badge {
+        background: #eee !important;
+        color: #333 !important;
+        border: 1px solid #ccc !important;
+    }
+
+    /* Location/Clients List View specific */
+    #locationClientsList {
+        display: block !important;
+    }
 }
 
 /* Responsive */
@@ -668,7 +988,7 @@ tr:hover {
     font-size: 2.5rem;
     font-weight: 800;
     margin-bottom: 60px;
-    background: linear-gradient(135deg, #fff 0%, #cbd5e0 100%);
+    background: linear-gradient(135deg, #a0aec0 0%, #718096 100%);
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
 }
