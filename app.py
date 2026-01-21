@@ -13,7 +13,7 @@ app = Flask(__name__)
 app.secret_key = 'nextis_secret_key_change_in_production'
 app.config['UPLOAD_FOLDER'] = 'uploads'
 app.config['PORTFOLIO_FOLDER'] = os.path.join('static', 'portfolio_uploads')
-app.config['DB_NAME'] = 'nextis.db'
+app.config['DB_NAME'] = 'nexsis.db'
 os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
 os.makedirs(app.config['PORTFOLIO_FOLDER'], exist_ok=True)
 
