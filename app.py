@@ -633,11 +633,11 @@ def get_client_details(client_id):
                 except:
                     pass
             
-            # 3. If empty extra_data, fallback to core
-            if not row_data:
-                 for field in ['location', 'phone', 'anydesk']:
-                      val = record[field]
-                      if val: row_data[field] = val
+            # 3. Always merge core fields from the record as fallback/primary if not in extra_data
+            for field in ['location', 'phone', 'anydesk', 'business_name']:
+                 val = record[field]
+                 if val and val != 'אין' and field not in row_data:
+                      row_data[field] = val
 
             # 4. Merge into main dict
             merged_data.update(row_data)
@@ -1008,4 +1008,4 @@ def delete_contact_message(message_id):
         conn.close()
 
 if __name__ == '__main__':
-    app.run(debug=True, port=5001)
+    app.run(host='0.0.0.0', debug=True, port=5001)

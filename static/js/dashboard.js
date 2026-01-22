@@ -324,7 +324,10 @@ function displaySearchResults(results, container) {
             }
         });
 
-        card.onclick = () => openClientDetails(business);
+        card.onclick = () => {
+            card.classList.add('visited-card');
+            openClientDetails(business);
+        };
         card.innerHTML = `
             <div class="card-title">${name}</div>
             <div class="card-detail">📍 <strong>עיר:</strong> ${location}</div>
@@ -590,15 +593,70 @@ async function openClientDetails(client) {
 
         // 2. Render Extended Info
         let extendedCount = 0;
+
+        // Define standard fields we always want to show
+        const standardFields = [
+            'בעלים',
+            'אופן תשלום',
+            'מס\' מורשה',
+            'מס\' מסוף',
+            'ציוד',
+            'תאריך התחלה',
+            'ח.פ',
+            'mail',
+            'דוא"ל'
+        ];
+
+        // Helper to find value case-insensitively or exact match
+        function findValue(fieldName) {
+            const found = data.find(i => i.Field === fieldName || i.Field.toLowerCase() === fieldName.toLowerCase());
+            return found ? found.Value : null;
+        }
+
+        // 2a. Render Standard Fields FIRST
+        standardFields.forEach(field => {
+            let val = findValue(field);
+
+            // If val is null/empty, check if there's a mapped alternative name in the data
+            // (e.g. if field is 'בעלים' but data has 'שם בעלים')
+            if (!val && field === 'בעלים') val = findValue('שם בעלים') || findValue('איש קשר');
+
+            // Format value
+            const displayVal = (val === null || val === undefined || val === '') ? '-' : val;
+
+            const div = document.createElement('div');
+            div.className = 'detail-card';
+            // Add special class for standard fields to style them if needed
+            div.style.borderLeft = "3px solid #6366f1";
+            div.innerHTML = `
+                <span class="detail-card-label">${field}</span>
+                <div class="detail-card-value">${displayVal}</div>
+            `;
+            extendedContainer.appendChild(div);
+            extendedCount++;
+        });
+
+        // 2b. Render Remaining Fields
         data.forEach(item => {
+            // Skip core fields
             if (coreFields.includes(item.Field) || ['id', 'created_at', 'business_name', 'extra_data'].includes(item.Field)) return;
-            if (!item.Value && item.Value !== 0) return; // Skip empty
+
+            // Skip if it's already rendered as a standard field
+            if (standardFields.includes(item.Field)) return;
+            if (item.Field === 'שם בעלים' && standardFields.includes('בעלים')) return; // handled above
+
+            // Skip empty remaining fields to avoid clutter? Or show them? 
+            // User requested "show details even if they dont exist", usually refers to standard schema. 
+            // For random extra columns, we probably only want to show if they have data.
+            // Let's show everything to be safe based on "edit shows it".
+
+            const val = (item.Value === null || item.Value === undefined || item.Value === '') ? '-' : item.Value;
 
             const div = document.createElement('div');
             div.className = 'detail-card';
             div.innerHTML = `
                 <span class="detail-card-label">${item.Field}</span>
-                <div class="detail-card-value">${item.Value}</div>
+                <div class="detail-card-value">${val}</div>
             `;
             extendedContainer.appendChild(div);
             extendedCount++;
@@ -729,6 +787,23 @@ function openEditClientModal(client) {
     container.innerHTML = '';
     document.getElementById('editClientId').value = client.id;
 
+    // Merge extra_data into client object for editing purposes
+    // This allows us to see all fields in the edit form
+    let fullClientData = { ...client };
+
+    // Attempt to parse extra_data if it exists and is a string
+    if (client.extra_data && typeof client.extra_data === 'string') {
+        try {
+            const extra = JSON.parse(client.extra_data);
+            fullClientData = { ...fullClientData, ...extra };
+        } catch (e) {
+            console.error("Error parsing extra_data for edit", e);
+        }
+    } else if (client.extra_data && typeof client.extra_data === 'object') {
+        // If it's already an object (e.g. from expanded API view)
+        fullClientData = { ...fullClientData, ...client.extra_data };
+    }
+
     // We want to preserve specific fields at the top if they exist
     const priorityFields = ['business_name', 'location', 'phone', 'anydesk'];
     const labels = {
@@ -740,15 +815,15 @@ function openEditClientModal(client) {
 
     // Add priority fields
     priorityFields.forEach(field => {
-        const val = client[field] || '';
+        const val = fullClientData[field] || '';
         const group = createEditFieldGroup(field, labels[field] || field, val, true);
         container.appendChild(group);
     });
 
     // Add extra fields (everything else in client object that isn't ID or created_at or priority)
-    Object.keys(client).forEach(key => {
-        if (priorityFields.includes(key) || ['id', 'created_at', 'extra_data', 'source_file'].includes(key)) return;
-        const val = client[key];
+    Object.keys(fullClientData).forEach(key => {
+        if (priorityFields.includes(key) || ['id', 'created_at', 'extra_data', 'source_file', 'Business Name', 'Location', 'Phone', 'AnyDesk'].includes(key)) return;
+        const val = fullClientData[key];
         if (typeof val === 'object' || Array.isArray(val)) return; // Skip complex objects
 
         const group = createEditFieldGroup(key, key, val, false);
