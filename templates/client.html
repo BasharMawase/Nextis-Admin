@@ -57,12 +57,30 @@
 
         body {
             display: block;
-            background-color: var(--bg-primary);
+            /* Global Background with Logo */
+            background: linear-gradient(rgba(247, 250, 252, 0.95), rgba(237, 242, 247, 0.95)),
+            url("{{ url_for('static', filename='logo.jpg') }}");
+            background-size: cover;
+            background-position: center;
+            background-repeat: no-repeat;
+            background-attachment: fixed;
+            /* Fixed across whole site */
+
             color: var(--text-main);
             padding: 0;
             overflow-x: hidden;
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
             transition: background-color 0.3s ease, color 0.3s ease;
+        }
+
+        /* Dark Mode Global Background */
+        [data-theme="dark"] body {
+            background: linear-gradient(rgba(26, 29, 41, 0.95), rgba(26, 29, 41, 0.97)),
+            url("{{ url_for('static', filename='logo.jpg') }}");
+            background-size: cover;
+            background-position: center;
+            background-repeat: no-repeat;
+            background-attachment: fixed;
         }
 
         .section-title {
@@ -80,9 +98,16 @@
             justify-content: center;
             align-items: center;
             text-align: center;
-            background: var(--bg-gradient-hero);
+
+            /* Transparent background so body bg shows */
+            background: transparent;
             padding: 20px;
             position: relative;
+        }
+
+        /* Override dark mode specific hero change */
+        [data-theme="dark"] .hero-section {
+            background: transparent;
         }
 
         .hero-title {
@@ -472,8 +497,7 @@
     </div>
 
     <!-- Services Grid ("Our Solutions") -->
-    <div id="services" class="client-section"
-        style="background: var(--bg-gradient-section); position: relative; overflow: hidden;">
+    <div id="services" class="client-section" style="background: transparent; position: relative; overflow: hidden;">
         <!-- Decorative Background Blur -->
         <div
             style="position: absolute; top: 0; right: 0; width: 400px; height: 400px; background: rgba(230, 57, 70, 0.05); filter: blur(100px); border-radius: 50%; pointer-events: none;">
@@ -518,7 +542,7 @@
     </div>
 
     <!-- Portfolio Section -->
-    <div id="portfolio" class="client-section" style="background: var(--bg-secondary);">
+    <div id="portfolio" class="client-section" style="background: transparent;">
         <h2 class="section-title animate-on-scroll">פרויקטים נבחרים</h2>
         <div id="portfolioGrid" class="services-grid">
             <!-- Dynamic Projects -->
@@ -526,7 +550,7 @@
     </div>
 
     <!-- Value Props ("Why Choose Us") -->
-    <div class="client-section" style="background: var(--bg-primary);">
+    <div class="client-section" style="background: transparent;">
         <h2 class="section-title animate-on-scroll">למה לבחור ב-Nextis?</h2>
         <div class="features-container">
             <div class="feature-item animate-on-scroll">
@@ -548,7 +572,7 @@
     </div>
 
     <!-- Stats Counter -->
-    <div class="stats-section animate-on-scroll" style="padding: 60px 20px; background: var(--bg-secondary);">
+    <div class="stats-section animate-on-scroll" style="padding: 60px 20px; background: transparent;">
         <div class="stats-grid">
             <div class="stat-item">
                 <div style="font-size: 2.5rem; margin-bottom: 15px;">👥</div>
@@ -564,7 +588,7 @@
     </div>
 
     <!-- Contact Section -->
-    <div id="contact" class="client-section" style="background: var(--bg-gradient-hero);">
+    <div id="contact" class="client-section" style="background: transparent;">
         <h2 class="section-title animate-on-scroll">צור קשר</h2>
         <div class="contact-content">
             <!-- Contact Info -->
@@ -625,7 +649,7 @@
 
     <!-- Reviews Section -->
     <div class="reviews-section"
-        style="background: var(--bg-gradient-section); padding: 80px 20px; position: relative; overflow: hidden;">
+        style="background: transparent; padding: 80px 20px; position: relative; overflow: hidden;">
         <!-- Background Elements -->
         <div
             style="position: absolute; top: -100px; left: -100px; width: 400px; height: 400px; background: rgba(230, 57, 70, 0.1); border-radius: 50%; filter: blur(80px); pointer-events: none;">
